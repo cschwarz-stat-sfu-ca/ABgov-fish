@@ -1,0 +1,76 @@
+
+    ############################################################
+    data {
+       Nspecies <- max(Species.num)
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+    }    
+
+    model {
+    
+    # log normal distribution of single pass electrofishing values
+    for(i in 1:Ndata){
+       mu.data[i] <- mu.grand[Species.num[i]] + 
+                     site.eff[Site.num[i],Species.num[i]] +  
+                     year.eff[Year.num[i],Species.num[i]]
+       Density[i] ~ dlnorm( mu.data[i], tau[Species.num[i]])
+    }
+
+    # tau is 1/sd
+    for(i in 1:Nspecies){
+       tau[i] <- 1/(sd[i]*sd[i])
+       sd[i] ~ dunif(.01, 2)   # on the log-scale sd is proportion of the mean
+    }
+
+    # random effect of Year for each species
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          year.eff[i,j] ~ dnorm(0, tau.year.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.year.eff[i] <- 1/(sd.year.eff[i]*sd.year.eff[i])
+       sd.year.eff[i]  ~ dunif(.01,2)
+    }
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+       for(j in 1:Nspecies){
+          site.eff[i,j] ~ dnorm(0, tau.site.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.site.eff[i] <- 1/(sd.site.eff[i]*sd.site.eff[i])
+       sd.site.eff[i]  ~ dunif(.01, 2)
+    }
+
+    # grand mean for each species across all year and sites
+    for(i in 1:Nspecies){
+       mu.grand[i] ~ dnorm(0, .001)
+    }
+
+
+    # estimate the mean (over all sites) in year i for species j
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+         mu.year[i, j] <- mu.grand[j] + year.eff[i,j]
+       }
+    }
+
+   # derived variables.
+   # med.yearlog is antilog of mu.year[i,j] and is the median (over all sites) 
+   for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          med.year[i, j] <- exp(mu.year[i,j])
+       }
+   }
+
+   # probability that the median density in year i for species j being in a threshold category
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat[i,j,k] <- ifelse((med.year[i,j] >= FSI.lower[k]) && (med.year[i,j] < FSI.upper[k]),1,0)
+         }
+      }
+   }
+}
