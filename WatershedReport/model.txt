@@ -1,0 +1,90 @@
+
+    ############################################################
+    data {
+       Nspecies <- max(Species.num)
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+       minYear  <- min(Year)
+    }    
+
+    model {
+    
+    # log normal distribution of single pass electrofishing values
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          mu.trend  [i,j] <- beta0[j]    # No trend here
+          mu.process[i,j] <- mu.trend[i,j] + year.eff[i,j]
+       }
+    }
+    for(i in 1:Ndata){
+       mu.data[i] <- mu.trend[Year.num[i],Species.num[i]] + 
+                     site.eff[Site.num[i],Species.num[i]] +  
+                     year.eff[Year.num[i],Species.num[i]]
+       Density[i] ~ dlnorm( mu.data[i], tau[Species.num[i]])
+    }
+
+    # tau is 1/sd
+    for(i in 1:Nspecies){
+       tau[i] <- 1/(sd[i]*sd[i])
+       sd[i] ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    }
+
+    # priors for the intercept 
+    for(i in 1:Nspecies){
+       beta0[i] ~ dnorm(0, .001)
+    }
+
+    # random effect of Year for each species
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          year.eff[i,j] ~ dnorm(0, tau.year.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.year.eff[i] <- 1/(sd.year.eff[i]*sd.year.eff[i])
+       sd.year.eff[i]  ~ dunif(.01,2)
+    }
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+       for(j in 1:Nspecies){
+          site.eff[i,j] ~ dnorm(0, tau.site.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.site.eff[i] <- 1/(sd.site.eff[i]*sd.site.eff[i])
+       sd.site.eff[i]  ~ dunif(.01, 2)
+    }
+
+
+   # derived variables.
+   # med.den is antilog of  lognormal 
+   for(i in 1:Ndata){
+      med.den[i] <- exp(mu.data[i])
+   }
+
+   for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          med.den.trend [i, j] <- exp(mu.trend  [i,j])
+          med.den.process[i,j] <- exp(mu.process[i,j])
+       }
+    }
+
+   # probability of being in a threshold category for individual observations
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat[i,j,k] <- ifelse((med.den.process[i,j] >= FSI.lower[j,k]) && (med.den.process[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat.trend[i,j,k] <- ifelse((med.den.trend[i,j] >= FSI.lower[j,k]) && (med.den.trend[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+}
