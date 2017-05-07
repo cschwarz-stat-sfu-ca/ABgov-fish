@@ -12,7 +12,7 @@
     # log normal distribution of single pass electrofishing values
     for(i in 1:Nyears){
        for(j in 1:Nspecies){
-          mu.trend  [i,j] <- beta0[j]    # No trend here
+          mu.trend  [i,j] <- beta0[j]+beta1[j]*i
           mu.process[i,j] <- mu.trend[i,j] + year.eff[i,j]
        }
     }
@@ -29,9 +29,10 @@
        sd[i] ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
     }
 
-    # priors for the intercept 
+    # priors for the intercept and slope
     for(i in 1:Nspecies){
        beta0[i] ~ dnorm(0, .001)
+       beta1[i] ~ dnorm(0, .001)
     }
 
     # random effect of Year for each species
@@ -54,6 +55,12 @@
     for(i in 1:Nspecies){
        tau.site.eff[i] <- 1/(sd.site.eff[i]*sd.site.eff[i])
        sd.site.eff[i]  ~ dunif(.01, 2)
+    }
+
+
+    # what is the probability that the trend is negative
+    for(i in 1:Nspecies){
+       p.beta1.lt.0[i] <- ifelse(beta1[i]<0,1,0)
     }
 
 

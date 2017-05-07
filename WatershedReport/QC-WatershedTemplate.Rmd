@@ -1,0 +1,464 @@
+---
+title: "Your Favorite Watershed - Watershed Assessment Report"
+author: "Carl Schwarz"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+# Links for RMarkdown help
+
+# Information about RMarkdown is at: http://rmarkdown.rstudio.com
+
+# Chunk options      https://yihui.name/knitr/options/
+
+# Dealing with word templates and Rmarkdown
+#    http://stackoverflow.com/questions/41982700/how-to-properly-number-headings-in-word-from-a-rmarkdown-document
+#    http://rmarkdown.rstudio.com/articles_docx.html   
+#    http://rmarkdown.rstudio.com/word_document_format.html
+
+# Information on using ggmap is available at
+#    https://github.com/dkahle/ggmap/blob/master/README.md
+# You may need to intall the latest version (not available on CRAN) if you get the message about ggproto. 
+# Use 
+#    devtools::install_github("dkahle/ggmap")
+
+#    http://github.com/zoul/Finch/zipball/master/
+
+# Here we open the libraries needed and source any other code as needed
+knitr::opts_chunk$set(echo = TRUE)
+
+Version <- '2071-05-05'
+
+library(car)
+library(coda)
+library(ggmap)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(lmerTest)
+library(pander)
+library(plyr)
+library(reshape2)
+library(R2jags)  # used for call to JAGS
+library(scales)
+library(stringr)
+library(xlsx)
+
+source("functions.R")  # functions to read the FWIS workbook etc
+source("FSI.threshold.R")
+
+# Set Figure and Table number variables. DO NOT CHANGE these except at your peril
+# Get the figure or table number before the first time you reference it.
+.FIGNUM <- 0
+.TABNUM <- 0
+
+
+# Get the raw data and do editing. This won't appear in the report, but gives you 
+# an audit trail of what you did to the raw data before creating the rest of the
+# template
+
+target.species <- 'ALL'
+#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+
+# Enter the workbook name and worksheet name containing the FWIS output
+
+workbookName = 'Data/Wampus Creek.xls'
+sheetName    = 'F&W'
+
+workbookName = 'Data/Freeman HUC8.xls'
+sheetName    = 'F&W 2008 & 2015 '
+
+workbookName = 'Data/Quirk Creek.xls'
+sheetName    = 'F&W'
+
+# Check that  FWIS files exists
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+
+
+
+# read the sheet from the workbook
+cpue <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
+
+# check that things seem to be ok so far
+head(cpue)
+
+# what years are present in this workbooks?
+xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
+
+# what species are present in this workbook
+xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
+
+# After reading in the data, you should check  basic statistics such as the years
+# measurements are taken, the Location names are spelled consistently, etc
+xtabs(~Activity.Date+Inventory.Survey.ID, data=cpue, exclude=NULL, na.action=na.pass)
+unique(cpue[,c("Activity.Date","Inventory.Survey.ID")])
+
+
+xtabs(~LocationTTM+Year,      data=cpue , exclude=NULL, na.action=na.pass)
+# are there any dates that are invalid
+cpue[ is.na(cpue$Year),]
+
+xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+cpue[ is.na(cpue$Species.Code) | cpue$Species.Code=="",]
+# remove records with blank species codes
+dim(cpue)
+cpue <- cpue[ !(is.na(cpue$Species.Code) | cpue$Species.Code==""),]
+dim(cpue)
+xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+
+
+xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(cpue)
+cpue <- cpue[ cpue$Survey.Type %in% c("Electrofishing"),]
+dim(cpue)
+xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+
+
+# Check the equipment type field
+xtabs(~Equipment.Type + Year,    data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~Equipment.Type + Survey.Type, data=cpue, exclude=NULL, na.action=na.pass)
+
+
+# Check the fork length field
+plyr::ddply(cpue, c("Species.Code"), plyr::summarize, 
+            nfish=length(Fork.Length..mm.),
+            nmiss=sum(is.na(Fork.Length..mm.)),
+            fl.min=min(Fork.Length..mm., na.rm=TRUE),
+            fl.max=max(Fork.Length..mm., na.rm=TRUE))
+# which records are missing Fork Length
+cpue[ is.na(cpue$Fork.Length..mm.),]
+
+
+# check the Distance and time fields
+xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+# impute a distance field
+cpue$Distance..m.[ is.na(cpue$Distance..m.)] <- 100
+xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+xtabs(~Inventory.Survey.ID+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+xtabs(~Time..s.,     data=cpue, exclude=NULL, na.action=na.pass)# remove data where no distance or time
+
+
+# check the counts by species
+xtabs(~Species.Code+Total.Count.of.Species.by.SurveyID, data=cpue, exclude=NULL, na.action=na.pass)
+
+```
+
+
+```{r eval=FALSE, echo=FALSE}
+# Refer to the cheat sheets for RMarkdown.
+
+# Common problems include:
+# - Don't add extra spaces after a periods before a new line. Otherwise the
+#   text will break at this point and not run together.
+```
+
+# Background
+"How are the fish in my river and streams doing?"
+We need this answer to set appropriate fishing regulations, 
+to understand and correct any problems with fish habitat and 
+to guard against invasive species.
+
+A healthy fish population and fish community means we 
+can all enjoy the benefits of sustainable fisheries 
+and healthy ecosystems. 
+A standard method of assessing the status of 
+fish populations is necessary to allow comparisons of fish sustainability 
+across the years in a watershed, and to compare to other 
+watersheds in the province. 
+In Alberta, we use accepted standard sampling methods for
+watershed fisheries assessments. 
+These methods provide the necessary data on fish abundance, 
+biological data (such as genetic information, age and sex), 
+and species diversity to assess sustainability over time and space.
+
+# Watershed Assessments
+Alberta Environment and Parks monitor fish in flowing waters using 
+standardized electrofishing and habitat surveys techniques. 
+Surveys often occur during the summer when river and stream 
+flows are lower to allow for safe working conditions and high 
+visibility of observed fish.  Although information is collected 
+from all species, assessments often focus on species such as
+Westslope Cutthroat Trout (_Oncorhynchus clarkii lewisi_), 
+Bull Trout (_Salvelinus confluentus_), 
+Arctic Grayling (_Thymallus arcticus_), 
+Athabasca Rainbow Trout (_Oncorhynchus mykiss_), 
+and 
+Mountain Whitefish (_Prosopium williamsoni_).
+
+```{r map.fignum, echo=FALSE}
+   fig.map<-getFIGNUM()
+```
+
+Watersheds are defined by the Hydrologic Unit Code (HUC) 10 watershed boundary, 
+as identified by the HUC Watersheds of Alberta system of classification system 
+(reference? AB or USGS?). 
+Within the study area, 
+**999999999**
+potential sampling locations were randomly 
+chosen using ArcGIS (ESRI, 2013) and R (R Core Team, 2015) 
+using generalized random tessellation stratified (GRTS) 
+sampling (Stevens and Olsen, 2004; Reilly, 2016). 
+Sites were further removed from consideration if they were observed or 
+strongly suspected to be dry or if there were access limitations that prevented crews from reaching the sites. 
+In total, `r length(unique(cpue$LocationTTM))` sites were sampled in the `r cpue$WatershedName[1]` watershed 
+as shown on the 
+Figure `r  fig.map`.
+
+```{r WatershedMap, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, dpi=300}
+#watershedplot <- ggplot2::ggplot(data=cpue, aes(x=Longitude,y=Latitude))+
+#   ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+#   theme(plot.title = element_text(size = 8))+  # change text size for title
+#   geom_point()+
+#   xlab("Longitude (Degrees)")+ylab("Latitude (Degrees)")
+#watershedplot
+
+# Extract the min/max of lat/long and make slightly larger to try and capture entire map
+lat  <- range(cpue$Latitude,  na.rm=TRUE)
+long <- range(cpue$Longitude, na.rm=TRUE)
+# Exapnd these slighly
+lat  <- lat + c(-1,1)* (lat[2]-lat[1])/5
+long <- long+ c(-1,1)* (long[2]-long[1])/5
+ 
+# get the map 
+boundaries<-c( long[1], lat[1], long[2], lat[2])
+ 
+# get the map from google. You can fiddle with the zoom to get the right scale
+#cc <- get_map(cc.boundaries, maptype="terrain",  source="google")#zoom=13)
+google.map <- get_map(boundaries, maptype="satellite",  source="google", zoom=11)
+
+my.map <- ggmap(google.map)
+
+# Exract the sampling points
+stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+plot1 <- my.map +
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         theme(plot.title = element_text(size = 8))+  # change text size for title
+         geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
+                    position=position_jitter(h=.0015, w=.0015) )+
+          xlab("Latitude")+ylab("Longitude")
+plot1
+
+```
+
+
+The set of unique TTM co-ordinates for the plot above are:
+```{r TTMcoordinates, echo=FALSE}
+print(stations, row.names=FALSE)
+```
+
+
+Fish sampling protocols followed
+existing flowing water fish survey standards.Specifically, we used backpack or boat electrofishing to capture fish in
+wadeable streams and rivers respectively. Sampling effort was recorded and fish
+were measured. If required, fin clips were taken for genetic analyses.
+
+## How is this information used?
+Catch rates (i.e., backpack electrofishing: number of fish per 300 meters, 
+boat electrofishing: number of fish per 1 km) 
+of fish species are an index of the populations' abundance, 
+with higher catch rates meaning there are more fish in a stream or river. 
+The sizes and age of fish also tell us if problems with overharvest 
+(e.g. too few fish living to old age) or habitat (e.g., poor spawning success) 
+are a concern. Biologists use this information, as well as a variety 
+of data on water quality, access, development, and 
+habitat threats as part of Alberta’s Fish Sustainability Index (FSI)
+and evaluation of species recovery work. 
+
+# Results
+Fish and habitat sampling was conducted at `r length(unique(cpue$LocationTTM))`
+sites within the `r cpue$WatershedName[1]`
+(HUC `r cpue$HUC[1]`) from `r min(cpue$Activity.Date, na.rm=TRUE)` to `r max(cpue$Activity.Date, na.rm=TRUE)`.
+This watershed is found approximately 
+**999999999  km northwest from the city of Calgary**.
+
+
+```{r FishSummaryTabNum, echo=FALSE}
+tab.fishsummary   <-getTABNUM();
+```
+
+There were `r length(unique(cpue$Species.Code))` species of fish were captured over this period and the mean fork length, 
+size range, and mean catch rates for all captured fish over this period are summarized in 
+Table `r tab.fishsummary`.
+
+```{r FishSummaryTable10, echo=FALSE, message=FALSE, warning=FALSE, results="asis"}
+# Comput the summary statstics for each species by year
+fish.stat <- plyr::ddply(cpue, c("Species.Code"), plyr::summarize,
+                   nfish = length(Fork.Length..mm.),
+                   fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
+                   fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
+                   fl.max= round(max(Fork.Length..mm. , na.rm=TRUE)))
+fish.stat$fl.min[ is.infinite(fish.stat$fl.min)] <- NA
+fish.stat$fl.max[ is.infinite(fish.stat$fl.max)] <- NA
+
+# Sort by species
+fish.stat <- fish.stat[ order(fish.stat$Species),]
+
+# Create the output table
+colnames(fish.stat) <- c(
+       "Species\nCode",
+       "n",
+       "Mean\nfork\nlength\nmm",
+       "Min\nfork\nlength\nmm",
+       "Max\nfork\nlength\nmm"
+    )
+pandoc.table(fish.stat,
+             caption=paste("Table ",tab.fishsummary,". Summary statistics on species of fish captured in ",
+                           cpue$WatershedName[1], sep=""),
+             justify='lrrrr',
+             split.cells=c(1,1,1,1,1))
+
+```
+
+
+
+Catch per unit effort (CPUE) was computed for each species for each year as follows:
+
+* The distance sampled (m) and count by species was extracted for each _Inventory Survey ID_.
+* The distance sampled and count by species were summed over multiple _Inventory Survey IDs_ for a location.
+A location was defined by the combination of TTM Easting and TTM Northing. 
+* The CPUE was computed as total count / total distance $\times$ 300 m to standardize to a per 300 m basis.
+
+
+A Bayesian analysis was used to 
+compute the posterior probability of belonging to each FIS Category based 
+on the yearly trend in the median CPUE
+accounting for within-year sampling variation, 
+site-to-site random variation, and year-specific effects (process error)
+as described in Schwarz (2017).
+
+```{r    echo=FALSE, message=FALSE, results="hide"}
+# We first extract for each Inventory.Survey.ID, one record per species
+catch.summary <- plyr::ddply(cpue, c("WatershedName","Species.Code","Inventory.Survey.ID","Year","LocationTTM"), plyr::summarize,
+                            Distance..m. = mean(Distance..m., na.rm=TRUE),
+                            Count        = mean(Total.Count.of.Species.by.SurveyID))
+# Now we need to expand for each Inventory.Survey.ID the full set of species 
+# and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
+which.species <- unique(catch.summary$Species.Code)
+all.catch <- plyr::ddply(catch.summary, "Inventory.Survey.ID", function(x, species.list){
+     all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
+                                Distance..m.       =x$Distance..m.[1],
+                                Year               =x$Year[1],
+                                LocationTTM        =x$LocationTTM[1],
+                                WatershedName      =x$WatershedName[1],
+                                Species.Code       =species.list,
+                                stringsAsFactors=FALSE)
+     all.species
+}, species.list=which.species)
+catch.summary <- merge(catch.summary, all.catch, all=TRUE)
+catch.summary$Count[ is.na(catch.summary$Count)] <- 0
+
+catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
+                             Distance..m. = sum(Distance..m., na.rm=TRUE),
+                             Count        = sum(Count,        na.rm=TRUE),
+                             CPUE.300m    = Count / Distance..m. * 300)
+
+xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
+
+```
+
+In the following sections, a more detailed investigation of the status of each of the above species will be provided.
+
+
+```{r setspecies, echo=FALSE}
+# Select which species you want assessment for. Comment out those you don't need. Don't forget the commas.
+#  Don't forget to remove any commas after the final species selected
+child.list <- c(
+#        'SpeciesSubsection-ARGR.Rmd',
+#        'SpeciesSubsection-BKTR.Rmd',
+#        'SpeciesSubsection-BLTR.Rmd',
+#        'SpeciesSubsection-BLBK.Rmd',
+#        'SpeciesSubsection-BURB.Rmd',
+#        'SpeciesSubsection-CTTR.Rmd',
+#        'SpeciesSubsection-RNTR.Rmd',
+       )
+
+child.list <- c(
+        'QC-SpeciesSubsection-BKTR.Rmd'
+       )
+```
+
+```{r child=child.list}
+```
+
+
+
+
+
+
+# Summary
+
+**Describe where fish are found in the watershed (general statement for all game fish species) 
+For each game species interpret the catch rate and size distribution. 
+What does this mean for the population? Did any environmental factors potentially influence assessment e.g. flood? 
+What kind of conservation actions need to be taken?**
+
+
+# References
+Alberta Biodiversity Monitoring Institute and Alberta Sustainable Resource Development (ABMI and ASRD). 2014. 
+
+Fish Survey Methods for Rivers: ABMI and ASRD Collaboration. 
+Written by Jim Schiek and edited by M.G. Sullivan. 
+Prepared for Alberta Biodiversity Monitoring Institute andAlberta Sustainable Resource Development. 20 pp.
+
+Alberta Fisheries Management Branch. 2013. 
+Standard for sampling of small streams in Alberta. 
+Alberta  Environment and Sustainable Resource Development, Fisheries Management Standards 	Committee. 19 pp.
+
+Environmental Systems Research Institute (ESRI). 2013. 
+ArcGIS Desktop: Version 10.2. Redlands , CA: 
+Environmental Systems Research Institute.
+
+R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL [(http://www.R-project.org/](http://www.R-project.org/).
+
+Mackay, W.C., G.R.\ Ash, H.J.\ Norris. 1990. Fish ageing methods for Alberta. R.L.\ & L. Environmental Services Ltd. 
+In assoc. with Alberta Fish and Wildlife Division and University of Alberta, Edmonton. 113 pp.
+
+Microsoft Corporation. 2010. Microsoft Excel, version 14.0.7145.5000.  
+Part of Microsoft Office Professional Plus 2010. Redmond Washington.
+
+Reilly, J. 2016. GRTS: User friendly method for busy biologists. 
+Alberta Environment and Parks. 4 pp.
+
+Schwarz, C.J. 2017. Bayesian classification into the Alberta FWIS Categories.
+Unpublished report.
+
+Statistical Analysis Software (SAS) Institute Inc. 2016. 
+JMP Statistical Discovery, version 13.0.0. SAS 
+Campus Drive, Cary, North Carolina	27513, USA.
+
+Slipke, J.W. 2010. Fishery Analyses and Modeling Simulator (FAMS). Version 1.0.
+
+Alberta Sustainable Resource Development (ASRD). 2008. 
+Electrofishing Certification and Safety Standard. 
+Alberta Sustainable Resource Development,	Fish and Wildlife Division. Edmonton, AB. 76 pp.
+
+Stevens, D.L., A.R.\ Olsen. 2004. 
+Spatially balanced sampling of natural resources. 
+Journal of the American Statistical Association 99(465):262-278.
+
+Watkins, O.B., S.C.\ Spencer. 2009. 
+Collection, preparation and ageing of walleye otoliths. 
+Alberta Sustainable Resource Development, Fish and Wildlife Division. 
+Spruce Grove, AB. 26 pp.

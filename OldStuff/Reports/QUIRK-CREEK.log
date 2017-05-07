@@ -1,0 +1,617 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  2 MAY 2017 22:37
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**\nonstopmode \input ./Quirk-Creek.tex
+(./Quirk-Creek.tex
+(/usr/local/texlive/2015/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2014/09/29 v1.4h Standard LaTeX document class
+(/usr/local/texlive/2015/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2014/09/29 v1.4h Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\c@figure=\count85
+\c@table=\count86
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2014/10/28 v1.0g Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2014/10/28 v1.15 key=value parser (DPC)
+\KV@toks@=\toks14
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2014/10/28 v1.0p Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/latexconfig/graphics.cfg
+File: graphics.cfg 2010/04/23 v1.9 graphics configuration of TeX Live
+)
+Package graphics Info: Driver file: pdftex.def on input line 94.
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2011/05/27 v0.06d Graphics/color for pdfTeX
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/infwarerr.sty
+Package: infwarerr 2010/04/08 v1.3 Providing info/warning/error messages (HO)
+)
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/ltxcmds.sty
+Package: ltxcmds 2011/11/09 v1.22 LaTeX kernel commands for general use (HO)
+)
+\Gread@gobject=\count87
+))
+\Gin@req@height=\dimen103
+\Gin@req@width=\dimen104
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/graphics/color.sty
+Package: color 2014/10/28 v1.1a Standard LaTeX Color (DPC)
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/latexconfig/color.cfg
+File: color.cfg 2007/01/18 v1.5 color configuration of teTeX/TeXLive
+)
+Package color Info: Driver file: pdftex.def on input line 142.
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/framed/framed.sty
+Package: framed 2011/10/22 v 0.96: framed or shaded text with page breaks
+\OuterFrameSep=\skip43
+\fb@frw=\dimen105
+\fb@frh=\dimen106
+\FrameRule=\dimen107
+\FrameSep=\dimen108
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/base/alltt.sty
+Package: alltt 1997/06/16 v2.0g defines alltt environment
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/caption/caption.sty
+Package: caption 2013/05/02 v3.3-89 Customizing captions (AR)
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/caption/caption3.sty
+Package: caption3 2013/05/02 v1.6-88 caption3 kernel (AR)
+Package caption3 Info: TeX engine: e-TeX on input line 57.
+\captionmargin=\dimen109
+\captionmargin@=\dimen110
+\captionwidth=\dimen111
+\caption@tempdima=\dimen112
+\caption@indent=\dimen113
+\caption@parindent=\dimen114
+\caption@hangindent=\dimen115
+)
+\c@ContinuedFloat=\count88
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/tools/multicol.sty
+Package: multicol 2015/03/31 v1.8m multicolumn formatting (FMi)
+\c@tracingmulticols=\count89
+\mult@box=\box26
+\multicol@leftmargin=\dimen116
+\c@unbalance=\count90
+\c@collectmore=\count91
+\doublecol@number=\count92
+\multicoltolerance=\count93
+\multicolpretolerance=\count94
+\full@width=\dimen117
+\page@free=\dimen118
+\premulticols=\dimen119
+\postmulticols=\dimen120
+\multicolsep=\skip44
+\multicolbaselineskip=\skip45
+\partial@page=\box27
+\last@line=\box28
+\maxbalancingoverflow=\dimen121
+\mult@rightbox=\box29
+\mult@grightbox=\box30
+\mult@gfirstbox=\box31
+\mult@firstbox=\box32
+\@tempa=\box33
+\@tempa=\box34
+\@tempa=\box35
+\@tempa=\box36
+\@tempa=\box37
+\@tempa=\box38
+\@tempa=\box39
+\@tempa=\box40
+\@tempa=\box41
+\@tempa=\box42
+\@tempa=\box43
+\@tempa=\box44
+\@tempa=\box45
+\@tempa=\box46
+\@tempa=\box47
+\@tempa=\box48
+\@tempa=\box49
+\c@columnbadness=\count95
+\c@finalcolumnbadness=\count96
+\last@try=\dimen122
+\multicolovershoot=\dimen123
+\multicolundershoot=\dimen124
+\mult@nat@firstbox=\box50
+\colbreak@box=\box51
+\mc@col@check@num=\count97
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2010/09/12 v5.6 Page Geometry
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/ifpdf.sty
+Package: ifpdf 2011/01/30 v2.3 Provides the ifpdf switch (HO)
+Package ifpdf Info: pdfTeX in PDF mode is detected.
+)
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/ifvtex.sty
+Package: ifvtex 2010/03/01 v1.5 Detect VTeX and its facilities (HO)
+Package ifvtex Info: VTeX not detected.
+)
+(/usr/local/texlive/2015/texmf-dist/tex/generic/ifxetex/ifxetex.sty
+Package: ifxetex 2010/09/12 v0.6 Provides ifxetex conditional
+)
+\Gm@cnth=\count98
+\Gm@cntv=\count99
+\c@Gm@tempcnt=\count100
+\Gm@bindingoffset=\dimen125
+\Gm@wd@mp=\dimen126
+\Gm@odd@mp=\dimen127
+\Gm@even@mp=\dimen128
+\Gm@layoutwidth=\dimen129
+\Gm@layoutheight=\dimen130
+\Gm@layouthoffset=\dimen131
+\Gm@layoutvoffset=\dimen132
+\Gm@dimlist=\toks15
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/comment/comment.sty
+\CommentStream=\write3
+
+Excluding comment 'comment')
+(/usr/local/texlive/2015/texmf-dist/tex/latex/titlesec/titlesec.sty
+Package: titlesec 2011/12/15 v2.10.0 Sectioning titles
+\ttl@box=\box52
+\beforetitleunit=\skip46
+\aftertitleunit=\skip47
+\ttl@plus=\dimen133
+\ttl@minus=\dimen134
+\ttl@toksa=\toks16
+\titlewidth=\dimen135
+\titlewidthlast=\dimen136
+\titlewidthfirst=\dimen137
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count101
+\float@exts=\toks17
+\float@box=\box53
+\@float@everytoks=\toks18
+\@floatcapt=\box54
+)
+\storeparskip=\skip48
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip10
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/upquote/upquote.sty
+Package: upquote 2012/04/19 v1.3 upright-quote and grave-accent glyphs in verba
+tim
+)
+(./Quirk-Creek.aux)
+\openout1 = `Quirk-Creek.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 80.
+LaTeX Font Info:    ... okay on input line 80.
+
+(/usr/local/texlive/2015/texmf-dist/tex/context/base/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count102
+\scratchdimen=\dimen138
+\scratchbox=\box55
+\nofMPsegments=\count103
+\nofMParguments=\count104
+\everyMPshowfont=\toks19
+\MPscratchCnt=\count105
+\MPscratchDim=\dimen139
+\MPnumerator=\count106
+\makeMPintoPDFobject=\count107
+\everyMPtoPDFconversion=\toks20
+) (/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/pdftexcmds.sty
+Package: pdftexcmds 2011/11/29 v0.20 Utility functions of pdfTeX for LuaTeX (HO
+)
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/ifluatex.sty
+Package: ifluatex 2010/03/01 v1.3 Provides the ifluatex switch (HO)
+Package ifluatex Info: LuaTeX not detected.
+)
+Package pdftexcmds Info: LuaTeX not detected.
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
+Package: epstopdf-base 2010/02/09 v2.5 Base part for package epstopdf
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/oberdiek/grfext.sty
+Package: grfext 2010/08/19 v1.1 Manage gr/oberdiek/grfext.sty
+Package: grfext 2010/08/19 v1.1 Manage graphics extensions (HO)
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/kvdefinekeys.sty
+Package: kvdefinekeys 2011/04/07 v1.3 Define keys (HO)
+))
+(/usr/local/texlive/2015/texmf-dist/tex/latex/oberdiek/kvoptions.sty
+Package: kvoptions 2011/06/30 v3.11 Key value format for package options (HO)
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/kvsetkeys.sty
+Package: kvsetkeys 2012/04/25 v1.16 Key value parser (HO)
+
+(/usr/local/texlive/2015/texmf-dist/tex/generic/oberdiek/etexcmds.sty
+Package: etexcmds 2011/02/16 v1.5 Avoid name clashes with e-TeX commands (HO)
+Package etexcmds Info: Could not find \expanded.
+(etexcmds)             That can mean that you are not using pdfTeX 1.50 or
+(etexcmds)             that some package has redefined \expanded.
+(etexcmds)             In the latter case, load this package earlier.
+)))
+Package grfext Info: Graphics extension search list:
+(grfext)             [.png,.pdf,.jpg,.mps,.jpeg,.jbig2,.jb2,.PNG,.PDF,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 452.
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: float package is loaded.
+Package caption Info: End \AtBeginDocument code.
+
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: <default>
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(72.26999pt, 469.75502pt, 72.26999pt)
+* v-part:(T,H,B)=(72.26999pt, 650.43001pt, 72.26999pt)
+* \paperwidth=614.295pt
+* \paperheight=794.96999pt
+* \textwidth=469.75502pt
+* \textheight=650.43001pt
+* \oddsidemargin=0.0pt
+* \evensidemargin=0.0pt
+* \topmargin=-37.0pt
+* \headheight=12.0pt
+* \headsep=25.0pt
+* \topskip=10.0pt
+* \footskip=30.0pt
+* \marginparwidth=65.0pt
+* \marginparsep=11.0pt
+* \columnsep=10.0pt
+* \skip\footins=9.0pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 101.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <8> on input line 101.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 101.
+
+LaTeX Warning: No \author given.
+
+(./QUIRK-CREEK.toc
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7> on input line 4.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 4.
+)
+\tf@toc=\write4
+\openout4 = `QUIRK-CREEK.toc'.
+
+ [1
+
+{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+Package color Info: Redefining color shadecolor on input line 159.
+ <figure/WatershetMap-1.pdf, id=10, 361.35pt x 216.81pt>
+File: figure/WatershetMap-1.pdf Graphic file (type pdf)
+
+<use figure/WatershetMap-1.pdf>
+Package pdftex.def Info: figure/WatershetMap-1.pdf used on input line 160.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Missing character: There is no â in font cmr10!
+Missing character: There is no € in font cmr10!
+Missing character: There is no ™ in font cmr10!
+ [2
+
+ <./figure/WatershetMap-1.pdf>]
+Missing character: There is no â in font cmr10!
+Missing character: There is no € in font cmr10!
+Missing character: There is no ™ in font cmr10!
+
+Runaway argument?
+{tab:fishsummaryCTTR. 
+! Paragraph ended before \ref was complete.
+<to be read again> 
+                   \par 
+l.254 
+      
+? 
+! Emergency stop.
+<to be read again> 
+                   \par 
+l.254 
+      
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 3710 strings out of 493089
+ 57251 string characters out of 6134842
+ 130785 words of memory out of 5000000
+ 7148 multiletter control sequences out of 15000+600000
+ 8540 words of font info for 30 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 38i,8n,38p,291b,337s stack positions out of 5000i,500n,10000p,200000b,80000s
+!  ==> Fatal error occurred, no output PDF file produced!
+nk-8-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 322.
+
+<figure/unnamed-chunk-9-1.pdf, id=40, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-9-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-9-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-9-1.pdf used on input line 323.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 337.
+
+<figure/unnamed-chunk-10-1.pdf, id=41, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-10-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-10-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-10-1.pdf used on input line 338.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 360.
+
+<figure/unnamed-chunk-12-1.pdf, id=42, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-12-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-12-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-12-1.pdf used on input line 361.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+Package color Info: Redefining color shadecolor on input line 372.
+<figure/unnamed-chunk-13-1.pdf, id=43, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-13-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-13-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-13-1.pdf used on input line 373.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[6
+
+ <./figure/unnamed-chunk-9-1.pdf> <./figure/unnamed-chunk-10-1.pdf>] [7 <./figu
+re/unnamed-chunk-12-1.pdf> <./figure/unnamed-chunk-13-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 425.
+
+<figure/unnamed-chunk-16-1.pdf, id=83, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-16-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-16-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-16-1.pdf used on input line 426.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+ [8
+
+ <./figure/unnamed-chunk-16-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 444.
+
+<figure/unnamed-chunk-17-1.pdf, id=93, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-17-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-17-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-17-1.pdf used on input line 445.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 459.
+
+<figure/unnamed-chunk-18-1.pdf, id=94, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-18-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-18-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-18-1.pdf used on input line 460.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 482.
+
+<figure/unnamed-chunk-20-1.pdf, id=95, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-20-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-20-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-20-1.pdf used on input line 483.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+Package color Info: Redefining color shadecolor on input line 494.
+<figure/unnamed-chunk-21-1.pdf, id=96, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-21-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-21-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-21-1.pdf used on input line 495.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[9
+
+ <./figure/unnamed-chunk-17-1.pdf> <./figure/unnamed-chunk-18-1.pdf>]
+[10 <./figure/unnamed-chunk-20-1.pdf> <./figure/unnamed-chunk-21-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 543.
+
+<figure/unnamed-chunk-24-1.pdf, id=135, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-24-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-24-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-24-1.pdf used on input line 544.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+ [11
+
+ <./figure/unnamed-chunk-24-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 562.
+
+<figure/unnamed-chunk-25-1.pdf, id=145, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-25-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-25-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-25-1.pdf used on input line 563.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 577.
+
+<figure/unnamed-chunk-26-1.pdf, id=146, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-26-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-26-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-26-1.pdf used on input line 578.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 600.
+
+<figure/unnamed-chunk-28-1.pdf, id=147, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-28-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-28-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-28-1.pdf used on input line 601.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+Package color Info: Redefining color shadecolor on input line 612.
+<figure/unnamed-chunk-29-1.pdf, id=148, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-29-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-29-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-29-1.pdf used on input line 613.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[12
+
+ <./figure/unnamed-chunk-25-1.pdf> <./figure/unnamed-chunk-26-1.pdf>]
+[13 <./figure/unnamed-chunk-28-1.pdf> <./figure/unnamed-chunk-29-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 666.
+
+<figure/unnamed-chunk-32-1.pdf, id=189, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-32-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-32-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-32-1.pdf used on input line 667.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+ [14
+
+ <./figure/unnamed-chunk-32-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 685.
+
+<figure/unnamed-chunk-33-1.pdf, id=199, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-33-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-33-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-33-1.pdf used on input line 686.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 700.
+
+<figure/unnamed-chunk-34-1.pdf, id=200, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-34-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-34-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-34-1.pdf used on input line 701.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+Package color Info: Redefining color shadecolor on input line 723.
+
+<figure/unnamed-chunk-36-1.pdf, id=201, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-36-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-36-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-36-1.pdf used on input line 724.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+Package color Info: Redefining color shadecolor on input line 735.
+<figure/unnamed-chunk-37-1.pdf, id=202, 361.35pt x 216.81pt>
+File: figure/unnamed-chunk-37-1.pdf Graphic file (type pdf)
+
+<use figure/unnamed-chunk-37-1.pdf>
+Package pdftex.def Info: figure/unnamed-chunk-37-1.pdf used on input line 736.
+(pdftex.def)             Requested size: 361.34912pt x 216.80946pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[15
+
+ <./figure/unnamed-chunk-33-1.pdf> <./figure/unnamed-chunk-34-1.pdf>]
+[16 <./figure/unnamed-chunk-36-1.pdf> <./figure/unnamed-chunk-37-1.pdf>]
+[17
+
+]
+Overfull \hbox (4.21703pt too wide) in paragraph at lines 759--760
+\OT1/cmr/m/n/10 Alberta Bio-di-ver-sity Mon-i-tor-ing In-sti-tute and Al-berta 
+Sus-tain-able Re-source De-vel-op-ment (ABMI and ASRD).
+ []
+
+[18
+
+] (./Quirk-Creek.aux) ) 
+Here is how much of TeX's memory you used:
+ 3857 strings out of 493089
+ 61190 string characters out of 6134842
+ 132003 words of memory out of 5000000
+ 7269 multiletter control sequences out of 15000+600000
+ 8708 words of font info for 31 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 38i,8n,38p,340b,341s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/local/texlive/2015/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmbx10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/am
+sfonts/cm/cmbx12.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmr10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfo
+nts/cm/cmr12.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmr17.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/
+cm/cmr9.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/
+cmsy10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/c
+mti10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cm
+tt10.pfb>
+Output written on Quirk-Creek.pdf (18 pages, 24158701 bytes).
+PDF statistics:
+ 279 PDF objects out of 1000 (max. 8388607)
+ 205 compressed objects within 3 object streams
+ 0 named destinations out of 1000 (max. 500000)
+ 106 words of extra memory for PDF output out of 10000 (max. 10000000)
+

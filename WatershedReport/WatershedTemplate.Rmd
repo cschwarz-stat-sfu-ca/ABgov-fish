@@ -3,20 +3,22 @@ title: "Your Favorite Watershed - Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  html_document:
-    number_sections: yes
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
     toc: yes
   pdf_document:
     number_sections: yes
     toc: yes
-  word_document:
-    fig_caption: yes
-    reference_docx: WatershedTemplate-STYLE.docx
+  html_document:
+    number_sections: yes
     toc: yes
 ---
 
 ```{r setup, include=FALSE}
 # Links for RMarkdown help
+
+# Information about RMarkdown is at: http://rmarkdown.rstudio.com
 
 # Chunk options      https://yihui.name/knitr/options/
 
@@ -71,22 +73,21 @@ target.species <- 'ALL'
 
 # Enter the workbook name and worksheet name containing the FWIS output
 
-workbookName = 'Data/Wampus Creek.xls'
+workbookName = file.path('Data','Wampus Creek.xls')
 sheetName    = 'F&W'
 
-workbookName = 'Data/Quirk Creek.xls'
-sheetName    = 'F&W'
-
-workbookName = 'Data/Freeman HUC8.xls'
+workbookName = file.path('Data','Freeman HUC8.xls')
 sheetName    = 'F&W 2008 & 2015 '
 
+workbookName = file.path('Data','Quirk Creek.xls')
+sheetName    = 'F&W'
 
 # Check that  FWIS files exists
 if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 
 
-# read the sheet from the woorkbook
+# read the sheet from the workbook
 cpue <- read.FWIS.workbook(
         workbookName  =workbookName,
         sheetName     =sheetName,
@@ -96,10 +97,10 @@ cpue <- read.FWIS.workbook(
 head(cpue)
 
 # what years are present in this workbooks?
-unique(cpue$Year)
+xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
 
 # what species are present in this workbook
-unique(cpue$Species.Code)
+xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
 
 # After reading in the data, you should check  basic statistics such as the years
 # measurements are taken, the Location names are spelled consistently, etc
@@ -250,6 +251,8 @@ my.map <- ggmap(google.map)
 # Exract the sampling points
 stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
 plot1 <- my.map +
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         theme(plot.title = element_text(size = 8))+  # change text size for title
          geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
                     position=position_jitter(h=.0015, w=.0015) )+
           xlab("Latitude")+ylab("Longitude")
@@ -382,13 +385,13 @@ In the following sections, a more detailed investigation of the status of each o
 # Select which species you want assessment for. Comment out those you don't need. Don't forget the commas.
 #  Don't forget to remove any commas after the final species selected
 child.list <- c(
-          'SpeciesSubsection-ARGR.Rmd',
+#        'SpeciesSubsection-ARGR.Rmd',
 #        'SpeciesSubsection-BKTR.Rmd',
 #        'SpeciesSubsection-BLTR.Rmd',
 #        'SpeciesSubsection-BLBK.Rmd',
-        'SpeciesSubsection-BURB.Rmd',
-#        'SpeciesSubsection-CTTR.Rmd'
-        'SpeciesSubsection-RNTR.Rmd'
+#        'SpeciesSubsection-BURB.Rmd',
+#        'SpeciesSubsection-CTTR.Rmd',
+#        'SpeciesSubsection-RNTR.Rmd',
        )
 ```
 
@@ -423,7 +426,7 @@ Environmental Systems Research Institute (ESRI). 2013.
 ArcGIS Desktop: Version 10.2. Redlands , CA: 
 Environmental Systems Research Institute.
 
-R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL [(http://www.R-project.org/](http://www.R-project.org/).
+R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL <(http://www.R-project.org/>.
 
 Mackay, W.C., G.R.\ Ash, H.J.\ Norris. 1990. Fish ageing methods for Alberta. R.L.\ & L. Environmental Services Ltd. 
 In assoc. with Alberta Fish and Wildlife Division and University of Alberta, Edmonton. 113 pp.

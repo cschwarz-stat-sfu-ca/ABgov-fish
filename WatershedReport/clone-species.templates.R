@@ -1,4 +1,5 @@
 # Clone the BKTR species files for other species
+library(plyr)
 
 species.list <- c("ARGR","BLBK",'BLTR',"BURB",'CTTR',"LKCH","RNTR")
 

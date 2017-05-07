@@ -2,25 +2,32 @@
 title: "Creating a draft Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
-output: html_document
+output:
+  pdf_document:
+    number_sections: yes
+  html_document:
+    number_sections: yes
 ---
 
-```{r setup, include=FALSE}
+```{r setup1, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 Version <- '2017-05-05'
 ```
-
+# Creating a draft Watershed Assessment Report
 ## Introduction
 
 A draft watershed assessment report will be created in MSWord using data extracted from the FWIS database.
-This draft report can then be edited by tweaking the R code (preferred) or tweaking the MSWord document (but your
-changes will be lost when you update the report).
+This draft report can then be edited by tweaking the R code (preferred) or tweaking the MSWord document (not preferred because your
+changes will be lost when you update the report by rerunning the _R_ code).
 
-This draft report is created using _R_ to do some computations, calling _JAGS_  (a program that does Bayesian computatons) from _R_
-to compute the probability of belonging to the FSI categories, and _RMarkdown_ to mingle text and graphics into a MSWord document.
+This draft report is created using _R_ and _JAGS_  (a program that does Bayesian computatons)
+to compute summary statistics, compute the probability of belonging to the FSI categories, 
+and make plots (using _ggplot2_). 
+_RMarkdown_ is used to mingle text and graphics and is rendered into a MSWord document.
 
-This follows the principle of Reproducible Research, where a single document contains ALL of the code used to analyze the data and
+This process follows the principle of Reproducible Research, 
+where a single document contains ALL of the code used to analyze the data and
 creates a report based on this. It is hoped that when each Watershed Assessment is updated, it will be necessary only to rerun the
 code and do some minor teaks to the report.
 
@@ -28,7 +35,8 @@ code and do some minor teaks to the report.
 Your computer will need the following software. Instructions for installing the software can be found
 at <http://people.stat.sfu.ca/~cschwarz/CourseNotes/HowGetSoftware.html>.
 
-* _R_. This is the statsitical software used to run the code. Don't forget to install the packages (add ons for _R_) as listed
+* _R_. This is the statistical software used create summary table and to create plots. 
+Don't forget to install the packages (add ons for _R_) as listed
 in item (6) of the installation instructions in the above link. You will also need to install the following packages:
     + _stringr_ specialized functions for text processing
     + _R2Jags_, _coda_, _digest_ needed to run JAGS
@@ -50,28 +58,684 @@ Don't forget to install the additional _R_ packages listed under item (2) of the
 ## Getting the FWIS data
 Information on each watershed is extracted from the FWIS database. Contact ????? for further details.
 
-The current extraction program created Excel 95 files. _R_ required Excel 97 or later, so you will have to open and save
-the file in Excel 97 or later format.
+**The current extraction program creates Excel 95 files. 
+_R_ requires workbooks to be in Excel 97 or later format, so you will have to open and save
+the file as Excel 97 or later format.**
 
 
-## Create a working directly.
-Create a working directory with the FWIS data file. This directory will also include the _RMarkdown_ files used to create the draft
-watershed report.
+## Create a working directory to hold the data files and the draft template.
+Create a working directory which will include the _RMarkdown_ files used to create the draft
+watershed report and any data files, image files, etc. needed for the report.
 
-## Copy the _RMarkdown_ template files to the working directory.
-The template files are located on the  _GitHub_ server
+### Copy the _RMarkdown_ template files to the working directory.
+The template files are located on the  _GitHub_ server and can be retreived as follows.
 
-
-- download from GitHub
-- create clones for species not present
-
-
-
-### Editing the template files
-- reproducible results
-- changing plots
-- selecting species to measure
-- editing the data
-- editing the map
+* Go to <https://github.com/cschwarz-stat-sfu-ca/ABgov-fish>
+The web page will look similar to:
+```{r, out.height="4in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","GitHubMainPage.png"))
+```
 
 
+* Click on the _Clone or Download_ button to download a zip file of the entire contents.
+
+* Move the zip file to your working directory.
+
+* Unzip the zip file.
+
+* Discard the zip file.
+
+* Your working directory should now have several subdirectories:
+```{r, out.height="1in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","MainDirectoryStructure.png"))
+```
+
+
+* Open the _WatershedReport_ directory 
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","WatershedDirectory.png"))
+```
+
+
+### Move the FWIS data file to the _Data_ directory.
+Move the FWIS data file to the _Data_ directory. **The data file MUST be in Excel 97 or later format.** 
+The FWIS extraction system currently creates an Excel 95 file. You will have to open it and re-save it as an Excel 97 or later
+document (either _.xls_ or _.xlsx_ is fine).
+```{r, out.height="2.5in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","DataDirectory.png"))
+```
+
+
+### Duplicate and rename the main template file and the species template files.
+We plan to analyze the _Quirk Creek_ data and so we will rename the main template and species template
+files by adding a prefix (e.g. QC-) to the _WatershedTemplate.Rmd_ and _SpeciesSubsection-BKTR.Rmd_ files.
+
+**DO NOT MODIFY THE NAME OF THE WatershedTemplate-STYLE.docx** file as this is 
+a style template for the _MSWord_ reports used by _RMarkdown_ when
+creating the draft watershed report. 
+
+You will now have two new files (copied and renamed) of the template files:
+```{r, out.height="1in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","DuplicatedFiles.png"))
+```
+
+
+### Clone the species template files.
+The GitHub site comes with a single species subsection template and you will have to clone this
+for the other species of interest in the watershed report. A clone is identical to the template for BKTR
+except all occurances of BKTR are replaced by the species code of interest (e.g. CTTR). This cloning
+can be done by making duplicates of the BKTR template and changing the name of the file and, then within the file,
+all occurances of BKTR to the new species code.
+
+I have provided a file, _clone-species.templates.R_, that can do this for you. **Be careful not to overwrite 
+any species template files that you have modified as part of the assessment.**
+
+For example, suppose we want species template files for BKTR (already present), BLBK, BLTR and CTTR.
+
+* Open the _clone-species.templates.R_ file using _RStudio_ (and NOT R). 
+* **BE SURE YOU ARE POINTED TO THE CORRECT WORKING DIRECTORY** by examining the name on the console window of _RStudio_. 
+(Your directory name will differ from mine shown below.)
+```{r, out.height="1in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","CheckWd.png"))
+```
+
+
+* The Rstudio script pane will have the _R_ code from the _clone-species.templates.R_ file and will look similar to :
+```{r clone, echo=TRUE, eval=FALSE}
+# Clone the BKTR species files for other species
+library(plyr)
+species.list <- c("ARGR","BLBK",'BLTR',"BURB",'CTTR',"LKCH","RNTR")
+
+l_ply(species.list, function (x){
+   # read the BKTR SpeciesSubsection, change all BKTR to the species list, and write out new file
+   filename <- 'SpeciesSubsection-BKTR.Rmd'
+   template <- readLines(filename)
+   template <- gsub("BKTR", x, template, fixed=TRUE)
+   filename <- gsub("BKTR", x, filename, fixed=TRUE) 
+   writeLines(template, filename, sep='\r\n' )
+})
+```
+
+* Modify the list of species codes.
+* Change the name of the template file _SpeciesSubsection-BKTR.Rmd_ to _QC-SpeciesSubsection-BKTR.Rmd_
+* Run the code. Your directory should now be populated with copies of the species template files for this watershed.
+
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","ClonedSpeciesTemplates.png"))
+```
+
+### Check the FSI category boundaries for the species of interest.
+The FSI category boundaries are stored in the _FSI.threshold.R_ file. This can be edited directly
+in _RStudio_ or any other text editor.
+
+
+
+
+## Editing the main template file.
+### Overview of process
+Each watershed report will have one main template file (_QC-WatershedTemplate.Rd_ in our case) and one or more
+species template files (_QC-SpeciesSubsection-BKTR.Rmd_ etc.) that are _knitted_ (in _R_ parlance) together. These
+template files contain both text and _R_ code as a living document so that as the data change, the report is updated when the
+the template are again knitted together.
+
+The templates are written using _RMarkdown_ <http://rmarkdown.rstudio.com> which provides a simple set of commands
+to knit together _R_ code and (formatted) text as shown below:
+
+```{r, out.height="1in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","Knitting.png"))
+```
+
+
+When you wish to render the document, _R Markdown_ feeds the _.Rmd_ file to _knitr_, which executes all of the code chunks and creates a new markdown (_.md_) document which includes the code and it’s output in a general way.The _pandoc_ program (included with _RStudio_) converts the
+markdown document to the final format (HTML, PDF, MSWord, etc.). 
+While the above seems complicated, most of it is hidden from you and 
+occurs "behind the scenes."
+
+Creating the draft watershed reports will follow a multi-step process.
+
+1. Read in the data from the FWIS system (the workbook you copied to the _Data_ directory) and create some prelimnary tables
+and plots to check the data, remove and outliers, or do any other pre-processing. This preprocessing is 'hidden' from the
+draft watershed assessment report, but the code used to pre-process the data is stored with the document. Consequently,
+when you update the assessment in a later year, the decisions made in pre-processing the data are evident.
+
+2. Make some summary tables and plots for the wateshed as a whole. The current template makes some simple tables of counts of
+fish species by year etc and produces a map showing the sampling locations. You are able to change the default figures and tables by modifying the
+corresponding _R_ code.
+
+3. For each species of interest, the corresponding species template file creates some summary charts and figures. It then calls
+_JAGS_ to estimate the probability that the species is in each FSI category accounting for process and sampling error over time.
+Summary figures are presented which again can be changed by modifying the _R_ code. I would suggest that you analyze one species at a time
+until all are working to your satisfaction.
+
+4. Finally, you can enter summary text describing the state of this watershed.
+
+
+Open the main template file (_QC-WatershedTemplate.Rmd_ for this example) in _RStudio_. The script pane will look similar to:
+```{r, out.height="4in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","MainTemplate-init-open.png"))
+```
+
+
+The template file consists of 3 types of material:
+
+* The headers (between the ---'s) which identifies the watershed assessment name, author, date
+of creating, and list the options to be applied when the document is rendered. In this case, 
+change the name of the title to a more appropriate name along with the author. The date
+uses _R_ to extract the date the code is run and formats it as YYYY-MM-DD. The options for a
+ MSWord rendering indicate that the _WatershedTemplate-STYLE.docx_ file is to be used
+ for styles when creating the document (this style document is where you specify that the sections are to be numbered).
+ The headers only occur once in a template at the top of the primary file.
+ 
+* Code chunks. These are sections of _R_ code of the form delimited by triple BACK quotes 
+with _R_ code in between.
+````python
+`r ''````{r chunkname, options}
+   R code here
+```
+````
+Each chunk has a number of options specifying if the
+output is to be displayed in the report (e.g. a plot), or computations are proceed with nothing placed in the report.
+A list of chunk options is available at: <https://yihui.name/knitr/options/>. There is no limit to the number or types
+of chunks you can use.
+
+* Text (scroll down the script window to see):
+
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","MainTemplate-text.png"))
+```
+
+which is written using _R Markdown_ (refer to <https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf>).
+There is no limit to the amount of text you can use.
+
+The text and code chunks can be intermixed at will.
+
+
+### Reading in the data and editing the data
+Return to the main template file (_QC-WatershedTemplate.Rmd_ for this example) in _RStudio_.
+
+The first chunk (labelled _setup_) is where we set up the _R_ code by opening the libraries needed for the analyses,
+read in the data file, and do any data editing. The option _include=FALSE_ implies that any of the output from this
+chunk will NOT be included in the draft report.
+
+You can execute all of the _R_ code in an entire chunk by clicking on the _Run_ pop-down menu 
+of _RStudio_ and selecting the appropriate option.
+
+```{r, out.height="1in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","RunChunk.png"))
+```
+
+
+Or you can run one or several lines at a time by selecting, hightlighting, and then using the _Run_ pop-down menu:
+
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","RunSelectLines.png"))
+```
+
+The keyboard short cuts (Command-Enter for Macintosh; Cntr-R for Windoze) can also be used.
+
+You will find it useful to send all output to the console window during the template setup using:
+
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","ChunkOutputConsole.png"))
+```
+
+#### Select which species you want to report on.
+About 20 lines down the first chunk, you will see the code fragment:
+
+```{r echo=TRUE, eval=FALSE}
+target.species <- 'ALL'  
+#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+```
+
+If you have particular species in mind, you can select them here by specifying the species codes (in any order)
+or using _`ALL'_ to select all species from the FWIS worksheet. Even if you specify that all species are to 
+be read in from the FWIS workbook, you have the option of selecting which species will have the FSI categorization done
+later in the code.
+
+In this case, we will leave the defaults as is. Notice the _R_ comment indicator (#) in the second line of the code
+fragment implies that this line is ignored.
+
+#### Specifying the file name of the FWIS workbook.
+The next code fragment is where the file name of the FWIS workbook is specified along with the sheetname containing the data.
+
+```{r echo=TRUE, eval=FALSE}
+workbookName = file.path('Data','Quirk Creek.xls')  
+sheetName    = 'F&W'
+```
+
+Here the workbook is located in the _Data_ subdirectory in the current working directory. The sheetname is "F&W".
+
+#### Read in the data
+The next code fragment checks that the file exists and then calls a function to read the FWIS workbook.
+
+```{r echo=TRUE, eval=FALSE}
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found ')) 
+
+# read the sheet from the workbook   
+cpue <- read.FWIS.workbook( 
+        workbookName  =workbookName,   
+        sheetName     =sheetName,   
+        target.species=target.species)   
+```
+
+Highlight and run all of the code block from the start to the end of the fragment above.
+```{r setup, include=FALSE}
+# Links for RMarkdown help
+
+# Information about RMarkdown is at: http://rmarkdown.rstudio.com
+
+# Chunk options      https://yihui.name/knitr/options/
+
+# Dealing with word templates and Rmarkdown
+#    http://stackoverflow.com/questions/41982700/how-to-properly-number-headings-in-word-from-a-rmarkdown-document
+#    http://rmarkdown.rstudio.com/articles_docx.html   
+#    http://rmarkdown.rstudio.com/word_document_format.html
+
+# Information on using ggmap is available at
+#    https://github.com/dkahle/ggmap/blob/master/README.md
+# You may need to intall the latest version (not available on CRAN) if you get the message about ggproto. 
+# Use 
+#    devtools::install_github("dkahle/ggmap")
+
+#    http://github.com/zoul/Finch/zipball/master/
+
+# Here we open the libraries needed and source any other code as needed
+knitr::opts_chunk$set(echo = TRUE)
+
+Version <- '2071-05-05'
+
+library(car)
+library(coda)
+library(ggmap)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(lmerTest)
+library(pander)
+library(plyr)
+library(reshape2)
+library(R2jags)  # used for call to JAGS
+library(scales)
+library(stringr)
+library(xlsx)
+
+source("functions.R")  # functions to read the FWIS workbook etc
+source("FSI.threshold.R")
+
+# Set Figure and Table number variables. DO NOT CHANGE these except at your peril
+# Get the figure or table number before the first time you reference it.
+.FIGNUM <- 0
+.TABNUM <- 0
+
+
+# Get the raw data and do editing. This won't appear in the report, but gives you 
+# an audit trail of what you did to the raw data before creating the rest of the
+# template
+
+target.species <- 'ALL'
+#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+
+# Enter the workbook name and worksheet name containing the FWIS output
+
+workbookName = 'Data/Wampus Creek.xls'
+sheetName    = 'F&W'
+
+workbookName = 'Data/Freeman HUC8.xls'
+sheetName    = 'F&W 2008 & 2015 '
+
+workbookName = 'Data/Quirk Creek.xls'
+sheetName    = 'F&W'
+
+# Check that  FWIS files exists
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+```
+If the read is successful, you should get some information lines in the console:
+```{r   echo=FALSE}
+# read the sheet from the woorkbook
+cpue <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
+```
+
+#### Check and edit the data
+The next sections of code creates summary tables to check the data (e.g. invalid species code, missing species code);
+create cross-tabulations by years collected, the type of equipment used (e.g., backpack electrofishing) etc. Here is where you 
+can exclude data, for example, from angling surveys that are not amenable to the CPUE computations. Some of the
+output is shown below:
+
+```{r  echo=TRUE}
+# what years are present in this workbooks?
+xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
+
+# what species are present in this workbook
+xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
+
+```
+
+```{r  echo=FALSE, include=FALSE}
+
+# After reading in the data, you should check  basic statistics such as the years
+# measurements are taken, the Location names are spelled consistently, etc
+xtabs(~Activity.Date+Inventory.Survey.ID, data=cpue, exclude=NULL, na.action=na.pass)
+unique(cpue[,c("Activity.Date","Inventory.Survey.ID")])
+
+
+xtabs(~LocationTTM+Year,      data=cpue , exclude=NULL, na.action=na.pass)
+# are there any dates that are invalid
+cpue[ is.na(cpue$Year),]
+
+xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+cpue[ is.na(cpue$Species.Code) | cpue$Species.Code=="",]
+# remove records with blank species codes
+dim(cpue)
+cpue <- cpue[ !(is.na(cpue$Species.Code) | cpue$Species.Code==""),]
+dim(cpue)
+xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+```
+
+Here we remove all non-electrofishing survey types:
+```{r echo=TRUE, include=TRUE}
+xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(cpue)
+cpue <- cpue[ cpue$Survey.Type %in% c("Electrofishing"),]
+dim(cpue)
+xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+```
+
+Data editing proceeds untils you are satisfied that all of the data should be 
+included in the subsequent analyses.
+
+```{r echo=FALSE, include=FALSE}
+# Check the equipment type field
+xtabs(~Equipment.Type + Year,    data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~Equipment.Type + Survey.Type, data=cpue, exclude=NULL, na.action=na.pass)
+
+
+# Check the fork length field
+plyr::ddply(cpue, c("Species.Code"), plyr::summarize, 
+            nfish=length(Fork.Length..mm.),
+            nmiss=sum(is.na(Fork.Length..mm.)),
+            fl.min=min(Fork.Length..mm., na.rm=TRUE),
+            fl.max=max(Fork.Length..mm., na.rm=TRUE))
+# which records are missing Fork Length
+cpue[ is.na(cpue$Fork.Length..mm.),]
+
+
+# check the Distance and time fields
+xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+# impute a distance field
+cpue$Distance..m.[ is.na(cpue$Distance..m.)] <- 100
+xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+xtabs(~Inventory.Survey.ID+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+
+xtabs(~Time..s.,     data=cpue, exclude=NULL, na.action=na.pass)# remove data where no distance or time
+
+
+# check the counts by species
+xtabs(~Species.Code+Total.Count.of.Species.by.SurveyID, data=cpue, exclude=NULL, na.action=na.pass)
+```
+
+#### Modifying the introductory text.
+After the first code chunk, some introductory text is given:
+
+>\# Background  
+>"How are the fish in my river and streams doing?"  
+>We need this answer to set appropriate fishing regulations,   
+>to understand and correct any problems with fish habitat and   
+>to guard against invasive species.  
+>
+>A healthy fish population and fish community means we   
+>can all enjoy the benefits of sustainable fisheries   
+>and healthy ecosystems.   
+>A standard method of assessing the status of   
+>fish populations is necessary to allow comparisons of fish sustainability   
+
+All text is written using _RMarkdown_ <https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf>
+and there is plenty of help available on the web (thanks Google!). Text can be entered free form, i.e. you can
+break lines anywhere in a paragraph and it will be flowed together, EXCEPT if a line has two or more space characters at the 
+end, in which case it is treated as line break.
+
+A hash mark (\#} indicates a level 1 header; two hash marks (\#\#) indicate a level 2 header and so on.
+
+Text is italiczed by enclosing with underscores, e.g.
+
+>Westslope Cutthroat Trout (\_Oncorhynchus clarkii lewisi\_),   
+>Bull Trout (\_Salvelinus confluentus\_),   
+>Arctic Grayling (\_Thymallus arcticus\_),   
+>Athabasca Rainbow Trout (\_Oncorhynchus mykiss\_),   
+
+In some cases, placeholders are present where you need to modify the text as information is not available from the
+FWIS system. Here the number of potential sampling locations (not the actual number taken) must be entered manually
+replacing the 99999999 placeholder. The \*\* indicate boldfaced text to make it standout in the draft report in case you forget to
+change this.
+
+>Within the study area, 
+>\*\*999999999\*\*
+>potential sampling locations were randomly 
+>chosen using ArcGIS (ESRI, 2013) and R (R Core Team, 2015) 
+
+You can also include _R_ code expressions inline in the text. See the _RMarkdown_ manuals for details.
+
+#### Creating a map of sampling locations
+The code chunk labelled _WatershedMap_, creates a map of the sampling locations. It uses the range of latitude and longitude (expanded
+by a small amount)
+to set a bounding box before calling Google Maps to return a satellite image. 
+Unfortunately, Google Maps returns a map based on the center of the bounding box and a zoom factor -- the 
+_get\_map_ function tries to compute the appropriate factors but doesn't aways succeed. For example,
+the default zoom factor gives the following map:
+
+```{r map.fignum, echo=FALSE}
+   fig.map<-getFIGNUM()
+```
+
+```{r  echo=TRUE, include=TRUE,fig.height=3}
+# Extract the min/max of lat/long and make slightly larger to try and capture entire map
+lat  <- range(cpue$Latitude,  na.rm=TRUE)
+long <- range(cpue$Longitude, na.rm=TRUE)
+# Exapnd these slighly
+lat  <- lat + c(-1,1)* (lat[2]-lat[1])/5
+long <- long+ c(-1,1)* (long[2]-long[1])/5
+ 
+# get the map 
+boundaries<-c( long[1], lat[1], long[2], lat[2])
+ 
+# get the map from google. You can fiddle with the zoom to get the right scale
+#cc <- get_map(cc.boundaries, maptype="terrain",  source="google")#zoom=13)
+google.map <- get_map(boundaries, maptype="satellite",  source="google") #, zoom=11)
+
+my.map <- ggmap(google.map)
+
+# Exract the sampling points
+stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+plot1 <- my.map +
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         theme(plot.title = element_text(size = 8))+  # change text size for title
+         geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
+                    position=position_jitter(h=.0015, w=.0015) )+
+          xlab("Latitude")+ylab("Longitude")
+plot1
+```
+
+Not all of the sampling locations are shown in the returned map. By trial and error,
+ a zoom factor of 13 gives good results:
+
+```{r echo=TRUE, include=TRUE, warning=FALSE, message=FALSE} 
+google.map <- get_map(boundaries, maptype="satellite",  source="google", zoom=13)
+```
+
+
+```{r echo=FALSE, include=TRUE, fig.height=3}
+my.map <- ggmap(google.map)
+
+# Extract the sampling points
+stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+plot1 <- my.map +
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         theme(plot.title = element_text(size = 8))+  # change text size for title
+         geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
+                    position=position_jitter(h=.0015, w=.0015) )+
+          xlab("Latitude")+ylab("Longitude")
+plot1
+```
+
+Notice how figure and table numbers are generated. You need to execute a code chunk prior to first usage which generates
+a table or figure number and assigns it to a variable that can be used in the text or in code blocks.
+
+#### Creating a table.
+Unfortunately, tables are more difficult to get nicely formatted in _RMarkdown_ unless one is using a _LaTeX_ rendering engine,
+in which case you have have very fine control. However, _LaTeX_ is likely too complicated for mere mortals.
+
+
+```{r FishSummaryTabNum, echo=FALSE}
+tab.fishsummary   <-getTABNUM();
+```
+
+The _pandoc.table_ function does a reasonable job. First the summary statistics are computed 
+in the usual way:
+
+```{r FishSummaryTable10, echo=TRUE, message=FALSE, warning=FALSE}
+# Comput the summary statstics for each species by year
+fish.stat <- plyr::ddply(cpue, c("Species.Code"), plyr::summarize,
+                   nfish = length(Fork.Length..mm.),
+                   fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
+                   fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
+                   fl.max= round(max(Fork.Length..mm. , na.rm=TRUE)))
+fish.stat$fl.min[ is.infinite(fish.stat$fl.min)] <- NA
+fish.stat$fl.max[ is.infinite(fish.stat$fl.max)] <- NA
+
+# Sort by species
+fish.stat <- fish.stat[ order(fish.stat$Species),]
+head(fish.stat)
+```
+
+Then we create the column labels (the \\n in the label implies a line break)
+
+```{r echo=TRUE}
+colnames(fish.stat) <- c(
+       "Species\nCode",
+       "n",
+       "Mean\nfork\nlength\nmm",
+       "Min\nfork\nlength\nmm",
+       "Max\nfork\nlength\nmm"
+    )
+```
+
+and then the _pandoc.table_ creates the output to be rendered
+```{r echo=TRUE, include=TRUE}
+pandoc.table(fish.stat,
+             caption=paste("Table ",tab.fishsummary,
+                           ". Summary statistics on species of fish captured in ",
+                           cpue$WatershedName[1], sep=""),
+             justify='lrrrr',
+             split.cells=c(1,1,1,1,1))
+```
+Refer to the help file in _R_ for _pandoc.table_ for information on the options such as 
+justification (justify='1rrrr' implies the first column is left justified, the second is right etc.),
+and relative sizes of columns (split.cells=c(1,1,1,1,1) implies that all columns are approximately equal in width).
+
+Notice that the output from _pandoc.table_ gets processed into a "nicer" looking table in MSWord, but there
+is only limited control over formatting tables in basic _RMarkdown_.
+
+#### Run the preliminary report WITHOUT any analysis at the species level.
+You are now ready to try to create your first draft assessment, WITHOUT any detailed analyses at the species level.
+
+Use the _Knit_ button in _RStudio_ to render the document in the format required.
+
+```{r, out.height="2in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","KnitMain.png"))
+```
+
+If all goes well, a document in the format requested should be produced. Check the console for errors in either the
+rendering process or the the _R_ code execution process for debugging. It is a bit of an art, but because all chunks are 
+labelled, you can see in which chunk the _R_ code failed. 
+
+I find it easier to create HTML documents during the debugging phase and leave creating the MSWord creation to the end.
+
+CONGRATULATIONs! You have created your first draft of a watershed assessment!
+
+
+
+## Requesting species analysis
+Now that you have the main document working, let us work on the species analysis.
+I would do a single species at a time before rendering the final document.
+
+For species with limited data (e.g. only 3 captured fish), this is a waste of time. Similarly, for
+species of limited interest, this is also a waste of time.
+
+You need to specify the names of (updated) species template files in the code fragment below. You need to change
+```{r setspecies-old, echo=TRUE, eval=FALSE}
+# Select which species you want assessment for. Comment out those you don't need. Don't forget the commas.
+#  Don't forget to remove any commas after the final species selected
+#child.list <- c(
+#        'SpeciesSubsection-ARGR.Rmd',
+#        'SpeciesSubsection-BKTR.Rmd',
+#        'SpeciesSubsection-BLTR.Rmd',
+#        'SpeciesSubsection-BLBK.Rmd',
+#        'SpeciesSubsection-BURB.Rmd',
+#        'SpeciesSubsection-CTTR.Rmd'
+#        'SpeciesSubsection-RNTR.Rmd'
+#       )
+```
+ to something like 
+
+```{r setspecies, echo=TRUE, eval=FALSE}
+# Select which species you want assessment for. Comment out those you don't need. Don't forget the commas.
+#  Don't forget to remove any commas after the final species selected
+child.list <- c(
+   'QC-SpeciesSubsection-BKTR.Rmd'
+       )
+```
+
+to do one species analysis (in this case for BKTR).
+
+After making this change to the main template document, render it again using the _knit_ button in _RStudio_.
+Note on my Macintosh, the code always ends with an error message about a _segfault_, but the final document has
+been rendered, so just ignore the error message about an `In irrecoverable exception occured, R is aborting now.'.
+The rendered file is in the directory and can be opened in the usual way.
+
+There is really nothing to modify in the species template file (the code is self contained) unless you want to modify some of the plots automatically created or add
+explanatory text around some of the output. All of the plots are standard _ggplot_ objects and so can be edited in the
+usual way.
+
+The Bayesian analysis returns a list object (_fsi.result_) that you can use to create customized plots or extract 
+information of interest such as the actual probabilities of belonging to each FSI category by year.
+
+Congradulation - almost done. Continue to analyze one species at a time until you are happy with each of the
+species analyses. Then put all of them together to create the combined report.
+
+
+## Finish up the summary
+Now that all of the species sections are working, update the default summary text and
+render the final draft document in the format of your choice (MSWord, PDF, HTML, etc.)
+
+
+## Words of wisdom.
+Remember, any changes to the _Rmd_ documents will be retained the next time you render the document.
+Any changes you make to the MSWord document will be lost the next time you render the document.
+Consequently, try and make the _Rmd_ documents as self contained as possible.
+
+Try and include any editing decisions such a removing outliers in the first code chunk of the main template
+file. In this way, all editing decisions are recorded and will be done the next time the code is run. Remember,
+you want the template files to be as self-contained and produce reproducible results.
+
+If you get an error message and nothing is rendered, look carefully at the RMarkdown Tab in the console pane
+of _RStudio_ to identify in which code block the error occured. If the error occurs in the Bayesian analysis, 
+you will need to give me a call unless you are a glutton for punishment as debugging JAGS will make you hair turn 
+grey quickly.
+
+It is possible to adust the MSWord Style file -- give me a call to discuss what kind of changes you want
+to the style file. It is not for the faint of heart. Here are some links on editing the style file - Google is your friend.
+
+*    <http://stackoverflow.com/questions/41982700/how-to-properly-number-headings-in-word-from-a-rmarkdown-document>
+*    <http://rmarkdown.rstudio.com/articles_docx.html> 
+*    <http://rmarkdown.rstudio.com/word_document_format.html>
+
+
+## P.S.
+This document was created using _RMarkdown_.
