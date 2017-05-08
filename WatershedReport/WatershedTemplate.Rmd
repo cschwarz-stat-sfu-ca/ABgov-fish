@@ -57,6 +57,7 @@ library(stringr)
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
+source("SpeciesMaturityFL.R")
 
 # Set Figure and Table number variables. DO NOT CHANGE these except at your peril
 # Get the figure or table number before the first time you reference it.
@@ -456,7 +457,7 @@ Part of Microsoft Office Professional Plus 2010. Redmond Washington.
 Reilly, J. 2016. GRTS: User friendly method for busy biologists. 
 Alberta Environment and Parks. 4 pp.
 
-Schwarz, C.J. 2017. Bayesian classification into the Alberta FWIS Categories.
+Schwarz, C.J. 2017. Bayesian classification into the Alberta FIS Categories.
 Unpublished report.
 
 Statistical Analysis Software (SAS) Institute Inc. 2016. 

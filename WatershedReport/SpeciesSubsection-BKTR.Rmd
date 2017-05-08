@@ -79,10 +79,14 @@ sumstatplot
 fig.BKTR.lengthdist<-getFIGNUM()
 ```
 
+```{r BKTR.mature.FL, echo=FALSE}
+# Extract the species maturity forklength
+BKTR.MatureFL <- SpeciesMaturityFL[ SpeciesMaturityFL$Species.Code == species.select, "MatureFL..mm."]
+```
+
 The length distribution over all years is shown in 
 Figure `r fig.BKTR.lengthdist`.
-Black vertical line indicates estimated length at 50\% maturity (**999999999999** mm Fork Length).
-{\Large Not yet shown --How is this known from the data? }
+Black vertical line indicates estimated length at 50\% maturity (`r BKTR.MatureFL` mm Fork Length).
 
 ```{r BKTR.lengthdist, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, dpi=300}
 # Create a histogram of the fork length over all years
@@ -92,6 +96,7 @@ lengthdist <- ggplot2::ggplot(data=cpue.select, aes(x=Fork.Length..mm., y=..dens
    theme(plot.title = element_text(size = 8))+  # change text size for title
    geom_histogram(alpha=0.2)+ 
    geom_density()+
+   geom_vline(xintercept=BKTR.MatureFL, color="black",size=2)+
    xlab("Fork length (mm)")+ylab("Density")
 lengthdist
 ```

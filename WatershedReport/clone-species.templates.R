@@ -5,7 +5,7 @@ species.list <- c("ARGR","BLBK",'BLTR',"BURB",'CTTR',"LKCH","RNTR")
 
 l_ply(species.list, function (x){
    # read the BKTR SpeciesSubsection, change all BKTR to the species list, and write out new file
-   filename <- 'SpeciesSubsection-BKTR.Rmd'
+   filename <- 'QC-SpeciesSubsection-BKTR.Rmd'
    template <- readLines(filename)
    template <- gsub("BKTR", x, template, fixed=TRUE)
    filename <- gsub("BKTR", x, filename, fixed=TRUE) 

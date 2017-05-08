@@ -3,15 +3,15 @@ title: "Your Favorite Watershed - Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  word_document:
-    fig_caption: yes
-    reference_docx: WatershedTemplate-STYLE.docx
+  html_document:
+    number_sections: yes
     toc: yes
   pdf_document:
     number_sections: yes
     toc: yes
-  html_document:
-    number_sections: yes
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
     toc: yes
 ---
 
@@ -57,6 +57,7 @@ library(stringr)
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
+source("SpeciesMaturityFL.R")
 
 # Set Figure and Table number variables. DO NOT CHANGE these except at your peril
 # Get the figure or table number before the first time you reference it.
