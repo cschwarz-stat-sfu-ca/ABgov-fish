@@ -3,15 +3,15 @@ title: "Your Favorite Watershed - Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  word_document:
-    fig_caption: yes
-    reference_docx: WatershedTemplate-STYLE.docx
-    toc: yes
   pdf_document:
     number_sections: yes
     toc: yes
   html_document:
     number_sections: yes
+    toc: yes
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
     toc: yes
 ---
 
@@ -53,7 +53,7 @@ library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
-library(xlsx)
+#  library(xlsx) - This requires java to work properly
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
@@ -73,25 +73,37 @@ target.species <- 'ALL'
 
 # Enter the workbook name and worksheet name containing the FWIS output
 
-workbookName = file.path('Data','Wampus Creek.xls')
+workbookName = 'Data/Wampus Creek.xls'
 sheetName    = 'F&W'
+csvfilename  = file.path("Data","Wampus Creek.csv")
 
-workbookName = file.path('Data','Freeman HUC8.xls')
+workbookName = 'Data/Freeman HUC8.xls'
 sheetName    = 'F&W 2008 & 2015 '
+csvfilename  = file.path("Data", "Freeman HUC8.csv")
 
-workbookName = file.path('Data','Quirk Creek.xls')
+workbookName = 'Data/Quirk Creek.xls'
 sheetName    = 'F&W'
+csvfilename  = file.path("Data","Quirk Creek.csv")
 
+# CHoose one of the following code fragments, depending if JAVA is working or not.
+#  If xlxs package is working
 # Check that  FWIS files exists
-if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
-
-
+#if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
-cpue <- read.FWIS.workbook(
-        workbookName  =workbookName,
-        sheetName     =sheetName,
+#cpue <- read.FWIS.workbook(
+#        workbookName  =workbookName,
+#        sheetName     =sheetName,
+#        target.species=target.species)
+
+# Otherwise read using csv
+# Check that  FWIS files exists
+if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+
+cpue <- read.FWIS.workbook.csv(
+        csvfilename,
         target.species=target.species)
+
 
 # check that things seem to be ok so far
 head(cpue)
@@ -393,6 +405,13 @@ child.list <- c(
 #        'SpeciesSubsection-CTTR.Rmd',
 #        'SpeciesSubsection-RNTR.Rmd',
        )
+
+child.list <- c(
+        'QC-SpeciesSubsection-BKTR.Rmd',
+        'QC-SpeciesSubsection-BLTR.Rmd',
+        'QC-SpeciesSubsection-BLBK.Rmd',
+        'QC-SpeciesSubsection-CTTR.Rmd'
+       )
 ```
 
 ```{r child=child.list}
@@ -426,7 +445,7 @@ Environmental Systems Research Institute (ESRI). 2013.
 ArcGIS Desktop: Version 10.2. Redlands , CA: 
 Environmental Systems Research Institute.
 
-R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL <(http://www.R-project.org/>.
+R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL [(http://www.R-project.org/](http://www.R-project.org/).
 
 Mackay, W.C., G.R.\ Ash, H.J.\ Norris. 1990. Fish ageing methods for Alberta. R.L.\ & L. Environmental Services Ltd. 
 In assoc. with Alberta Fish and Wildlife Division and University of Alberta, Edmonton. 113 pp.

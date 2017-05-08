@@ -1,8 +1,7 @@
 
 read.FWIS.workbook<- function(
         workbookName,
-        WatershedName='Unknown',
-        sheetName="Electrofishing",
+        sheetName="F&W",
         target.species='ALL', # what target species to select
         select.equipment='Backpack',            # what equipment to select
         select.data     ='measure'             # what data to include ("count" and "measure" are two possibilities)
@@ -133,181 +132,1352 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
 #  get the raw data
    cat("\n\n\n*** Starting to read data from ", workbookName,  "***** \n")
    cat(      "    Worksheet ", sheetName, "\n")
-   cat(      "    In the ", WatershedName, ' Watershed \n')
-   
-   fish <- xlsx::read.xlsx(
-                 workbookName, 
-                 sheetName="Electrofishing",
-                 header=TRUE,
-                 startRow=3, endRow=2000,
-                 colIndex=1:58, # columns A ... BF
+
+   fish <- xlsx::read.xlsx2(
+                 file        =workbookName,
+                 sheetName   =sheetName,
                  colClasses='character',  # read all as character 
                  stringsAsFactors=FALSE)
    cat("total rows read ", dim(fish), "\n")
 
-   # The first row of the fish dataframe (corresponding to row 4 of the worksheet) needs to be removed
-   fish <- fish[ -1,]
-   cat("Removing worksheet row 4. Rows remaining ", dim(fish), "\n")
-   
 
-   # The workbook only enters information on the first row of a set corresponding to a survey of a site.
-   # Propogate the information in columns 1:36 down until the next row entry
-   # There is no easy was to do this except with a loop
-   cat(   'First few rows read in \n')
-   print(head(fish))
-   cat(   'Propogating entries to blank rows\n')
-   for(i in 1:nrow(fish)){
-     if(!is.na(fish$Survey.Type.Code[i])){ copyRow <- i}
-     if( is.na(fish$Survey.Type.Code[i])){ fish[i, 1:36] <- fish[copyRow, 1:36]}
+   # do some data checking
+   if(length(unique(fish$Waterbody.Offical.Name))>1)stop("More than one waterbody name present")
+
+   
+   # convert ActivityDate to R date format- Date returned in Excel date values 
+   fish$Activity.Date <- as.Date(as.numeric(fish$Activity.Date), origin=as.Date('1900-01-01')-2)
+   fish$Year          <- as.numeric(format(fish$Activity.Date, "%Y"))
+  
+   # convert TTM.Easting and TTM.Northing to numeric values
+   fish$TTM.Easting  <- as.numeric(fish$TTM.Easting)
+   fish$TTM.Northing <- as.numeric(fish$TTM.Northing)
+   fish$Longitude    <- as.numeric(fish$Longitude)
+   fish$Latitude     <- as.numeric(fish$Latitude)
+ 
+   # create LocationTTM based on Easting/Northing values
+   # at the moment, no checking for locations that are "close"
+   
+   fish$LocationTTM <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   
+   # create Watershed Name using proper case
+   if(!'Waterbody.Official.Name' %in% names(fish))stop("Missing Waterbody Official Name")
+   fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   
+   # convert forklength and weight to numeric
+   fish$"Fork.Length..mm." <- as.numeric(fish$"Fork.Length..mm.")
+   fish$"Weight..g."       <- as.numeric(fish$"Weight..g.")
+   
+   # convert Distance and time to numeric
+   fish$Distance..m.       <- as.numeric(fish$Distance..m.)
+   fish$Time..s.           <- as.numeric(fish$Time..s)
+   
+   # convert count to numeric
+   fish$Total.Count.of.Species.by.SurveyID <- as.numeric(fish$Total.Count.of.Species.by.SurveyID)
+   
+   fish}
+
+# In case you can't get JAVA to work. save the sheet as a CSV file and use the
+# following function.
+read.FWIS.workbook.csv<- function(
+        csvfile,
+        target.species='ALL', # what target species to select
+        select.equipment='Backpack',            # what equipment to select
+        select.data     ='measure'             # what data to include ("count" and "measure" are two possibilities)
+        ){
+
+load <- require(plyr)
+if(!load)stop("unable to load plyr package")
+
+# Read the reaw data from the FWMIS workbooks.
+# Input parameters are
+#      workbookName   - name of workbook with FWIS information
+#      wateshedName   - name of the Watershed represented by the FWIS workbook
+#      sheetName      - name of the sheed with the CPUE data
+#      target.species - vector of species codes for which the CPUE is to be extracted
+#      select.equipment-vector of equipment codes (lowercase) for which the CPUE is to be extracted
+#      select.data     -which CPUE data sould be included. "measure" (measured fish only), 
+#                                                          "count",  (counted fish only) or 
+#                                                       c("measure","count") (both types of data)
+#
+# Ouput 
+#   List with elements
+#      cpue - the CPUE data
+#      excluded.data - data the was excluded from the cpue. This should be checked for problem such as
+#                      misspelling of the equipment name etc
+#
+
+# What are the valid species codes?
+valid.species.codes.csv <- textConnection(
+"Species.Code  ,  Species.Common.Name  ,  Scientific.Name  ,  Species.Code2
+AFJW  ,  AFRICAN JEWELFISH  ,  HEMICHROMIS BIMACULATUS  ,  AFJW
+ARCH  ,  ARCTIC CHAR  ,  SALVELINUS ALPINUS  ,  ARCH
+ARGR  ,  ARCTIC GRAYLING  ,  THYMALLUS ARCTICUS  ,  ARGR
+AGMN  ,  ARCTIC GRAYLING (BELLY POPLN)  ,  THYMALLUS ARCTICUS MONTANUS  ,  AGMN
+ARLM  ,  ARCTIC LAMPREY  ,  LAMPETRA JAPONICA  ,  ARLM
+BSSN  ,  BANFF SPRINGS SNAIL  ,  PHYSELLA JOHNSONI  ,  BSSN
+BRMN  ,  BRASSY MINNOW  ,  HYBOGNATHUS HANKINSONI  ,  BRMN
+BRST  ,  BROOK STICKLEBACK  ,  CULAEA INCONSTANS  ,  BRST
+BKTR  ,  BROOK TROUT  ,  SALVELINUS FONTINALIS  ,  BKTR
+BNTR  ,  BROWN TROUT  ,  SALMO TRUTTA  ,  BNTR
+BLTR  ,  BULL TROUT  ,  SALVELINUS CONFLUENTUS  ,  BLTR
+BLBK  ,  BULL TROUT X BROOK TROUT HYBRID  ,  SALVELINUS CONFLUENTUS X SALVELINUS FONTINALIS  ,  BLBK
+BURB  ,  BURBOT  ,  LOTA LOTA  ,  BURB
+CCHL  ,  CICHLID  ,  PSEUDOTROPHEUS  ,  CCHL
+CHSL  ,  COHO SALMON  ,  ONCORHYNCHUS KISUTCH  ,  CHSL
+CTTR  ,  CUTTHROAT TROUT  ,  ONCORHYNCHUS CLARKI  ,  CTTR
+CRTR  ,  CUTTHROAT TROUT X RAINBOW TROUT  ,  ONCORHYNCHUS CLARKI X ONCORHYNCHUS MYKISS  ,  CRTR
+DPSC  ,  DEEPWATER SCULPIN  ,  MYOXOCEPHALUS THOMPSONI  ,  DPSC
+DLVR  ,  DOLLY VARDEN  ,  SALVELINUS MALMA  ,  DLVR
+EMSH  ,  EMERALD SHINER  ,  NOTROPIS ATHERINOIDES  ,  EMSH
+FTMN  ,  FATHEAD MINNOW  ,  PIMEPHALES PROMELAS  ,  FTMN
+FNDC  ,  FINESCALE DACE  ,  PHOXINUS NEOGAEUS  ,  FNDC
+FLCH  ,  FLATHEAD CHUB  ,  PLATYGOBIO GRACILIS  ,  FLCH
+GLTR  ,  GOLDEN TROUT  ,  ONCORHYNCHUS AQUABONITA  ,  GLTR
+GOLD  ,  GOLDEYE  ,  HIODON ALOSOIDES  ,  GOLD
+GOFS  ,  GOLDFISH  ,  CARASSIUS AURATUS  ,  GOFS
+IWDR  ,  IOWA DARTER  ,  ETHEOSTOMA EXILE  ,  IWDR
+KOKA  ,  KOKANEE  ,  ONCORHYNCHUS NERKA  ,  KOKA
+LKCH  ,  LAKE CHUB  ,  COUESIUS PLUMBEUS  ,  LKCH
+LKST  ,  LAKE STURGEON  ,  ACIPENSER FULVESCENS  ,  LKST
+LKTR  ,  LAKE TROUT  ,  SALVELINUS NAMAYCUSH  ,  LKTR
+LKWH  ,  LAKE WHITEFISH  ,  COREGONUS CLUPEAFORMIS  ,  LKWH
+LRSC  ,  LARGESCALE SUCKER  ,  CATOSTOMUS MACROCHEILUS  ,  LRSC
+LGPR  ,  LOGPERCH  ,  PERCINA CAPRODES  ,  LGPR
+LNDC  ,  LONGNOSE DACE  ,  RHINICHTHYS CATARACTAE  ,  LNDC
+LNSC  ,  LONGNOSE SUCKER  ,  CATOSTOMUS CATOSTOMUS  ,  LNSC
+LOTS  ,  LONGTAIL TADPOLE SHRIMP  ,  TRIOPS LONGICAUDATUS  ,  LOTS
+MOON  ,  MOONEYE  ,  HIODON TERGISUS  ,  MOON
+MNSC  ,  MOUNTAIN SUCKER  ,  CATOSTOMUS PLATYRHYNCHUS  ,  MNSC
+MNWH  ,  MOUNTAIN WHITEFISH  ,  PROSOPIUM WILLIAMSONI  ,  MNWH
+NNST  ,  NINESPINE STICKLEBACK  ,  PUNGITIUS PUNGITIUS  ,  NNST
+NOCY  ,  NORTHERN CRAYFISH  ,  ORCONECTES VIRILIS  ,  NOCY
+NRPK  ,  NORTHERN PIKE  ,  ESOX LUCIUS  ,  NRPK
+NRSQ  ,  NORTHERN PIKEMINNOW  ,  PTYCHOCHEILUS OREGONENSIS  ,  NRSQ
+NRDC  ,  NORTHERN REDBELLY DACE  ,  PHOXINUS EOS  ,  NRDC
+PMCH  ,  PEAMOUTH CHUB  ,  MYLCHEILUS CAURINUS  ,  PMCH
+PRDC  ,  PEARL DACE  ,  MARGARISCUS MARGARITA  ,  PRDC
+PRSC  ,  PRICKLY SCULPIN  ,  COTTUS ASPER  ,  PRSC
+PGWH  ,  PYGMY WHITEFISH  ,  PROSOPIUM COULTERI  ,  PGWH
+QUIL  ,  QUILLBACK  ,  CARPIODES CYPRINUS  ,  QUIL
+RNTR  ,  RAINBOW TROUT  ,  ONCORHYNCHUS MYKISS  ,  RNTR
+RDSH  ,  REDSIDE SHINER  ,  RICHARDSONIUS BALTEATUS  ,  RDSH
+RVSH  ,  RIVER SHINER  ,  NOTROPIS BLENNIUS  ,  RVSH
+RNWH  ,  ROUND WHITEFISH  ,  PROSOPIUM CYLINDRACEUM  ,  RNWH
+SLML  ,  SAILFIN MOLLY  ,  POECILIA LATIPINNA  ,  SLML
+SAUG  ,  SAUGER  ,  STIZOSTEDION CANADENSE  ,  SAUG
+SHRD  ,  SHORTHEAD REDHORSE  ,  MOXOSTOMA MACROLEPIDOTUM  ,  SHRD
+SHCS  ,  SHORTJAW CISCO  ,  COREGONUS ZENITHICUS  ,  SHCS
+SLRD  ,  SILVER REDHORSE  ,  MOXOSTOMA ANISURUM  ,  SLRD
+SLSC  ,  SLIMY SCULPIN  ,  COTTUS COGNATUS  ,  SLSC
+SMBS  ,  SMALLMOUTH BASS  ,  MICROPTERUS DOLOMIEU  ,  SMBS
+SPLA  ,  SPLAKE  ,  SALVELINUS NAMAYCUSH X SALVELINUS FONTINALIS  ,  SPLA
+SPSC  ,  SPOONHEAD SCULPIN  ,  COTTUS RICEI  ,  SPSC
+SPSH  ,  SPOTTAIL SHINER  ,  NOTROPIS HUDSONIUS  ,  SPSH
+SMSC  ,  ST. MARY SCULPIN  ,  COTTUS BAIRDII PUNCTULATUS  ,  SMSC
+STON  ,  STONECAT  ,  NOTURUS FLAVUS  ,  STON
+THST  ,  THREESPINE STICKLEBACK  ,  GASTEROSTEUS ACULEATUS  ,  THST
+TRPR  ,  TROUT-PERCH  ,  PERCOPSIS OMISCOMAYCUS  ,  TRPR
+CISC  ,  TULLIBEE (CISCO)  ,  COREGONUS ARTEDI  ,  CISC
+TLWH  ,  TULLIBEE (CISCO) X LAKE WHITEFISH  ,  COREGONUS ARTEDI X COREGONUS CLUPEAFORMIS  ,  TLWH
+WALL  ,  WALLEYE  ,  SANDER VITREUS  ,  WALL
+WEMO  ,  WESTERN MOSQUITOFISH  ,  GAMBUSIA AFFINIS  ,  WEMO
+WSMN  ,  WESTERN SILVERY MINNOW  ,  HYBOGNATHUS ARGYRITIS  ,  WSMN
+WHSC  ,  WHITE SUCKER  ,  CATOSTOMUS COMMERSONI  ,  WHSC
+YLPR  ,  YELLOW PERCH  ,  PERCA FLAVESCENS  ,  YLPR")
+
+valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE, strip.white=TRUE)
+
+# Argument checking
+    if(!file.exists(csvfile))stop("csv file not found", call.=TRUE)
+
+    # check that target species are ok
+    if(!all(toupper(target.species) %in% toupper(c(valid.species.codes$Species.Code, 'ALL'))))
+        stop(paste('at least one species code is not valid:', target.species, collapse=""))
+    if('ALL' %in% toupper(target.species))target.species<- toupper(valid.species.codes$Species.Code)
+     
+    if(!all(tolower(select.equipment) %in% tolower(c("Backpack","Float"))))stop("invalid value for select.equipment")
+    if(!all(tolower(select.data) %in% c("measure","count")))stop("invalid value for select.data")
+    select.data <- tolower(select.data)
+    
+    
+    
+  
+#  get the raw data
+   cat("\n\n\n*** Starting to read data from ", workbookName,  "***** \n")
+   cat(      "    Worksheet ", sheetName, "\n")
+
+   fish <- read.csv(csvfile, header=TRUE, as.is=TRUE, strip.white=TRUE)
+   cat("total rows read ", dim(fish), "\n")
+
+
+   # do some data checking
+   if(length(unique(fish$Waterbody.Offical.Name))>1)stop("More than one waterbody name present")
+
+   
+   # convert ActivityDate to R date format- Date returned in Excel date values 
+   fish$Activity.Date <- as.Date(fish$Activity.Date, "%d-%b-%y")
+   fish$Year          <- as.numeric(format(fish$Activity.Date, "%Y"))
+  
+   # convert TTM.Easting and TTM.Northing to numeric values
+   fish$TTM.Easting  <- as.numeric(fish$TTM.Easting)
+   fish$TTM.Northing <- as.numeric(fish$TTM.Northing)
+   fish$Longitude    <- as.numeric(fish$Longitude)
+   fish$Latitude     <- as.numeric(fish$Latitude)
+ 
+   # create LocationTTM based on Easting/Northing values
+   # at the moment, no checking for locations that are "close"
+   
+   fish$LocationTTM <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   
+   # create Watershed Name using proper case
+   if(!'Waterbody.Official.Name' %in% names(fish))stop("Missing Waterbody Official Name")
+   fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   
+   # convert forklength and weight to numeric
+   fish$"Fork.Length..mm." <- as.numeric(fish$"Fork.Length..mm.")
+   fish$"Weight..g."       <- as.numeric(fish$"Weight..g.")
+   
+   # convert Distance and time to numeric
+   fish$Distance..m.       <- as.numeric(fish$Distance..m.)
+   fish$Time..s.           <- as.numeric(fish$Time..s)
+   
+   # convert count to numeric
+   fish$Total.Count.of.Species.by.SurveyID <- as.numeric(fish$Total.Count.of.Species.by.SurveyID)
+   
+   fish}
+
+
+
+
+#--------------------------------------------------------------------
+
+
+# Convert to Proper Case (see help from toupper)
+toProperCase <- function(x) {
+    x <- tolower(x)
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1, 1)), substring(s, 2),
+          sep = "", collapse = " ")
+}
+
+# Keep track of figure and table numbers. Do not modify the global variables .FIGNUM and .TABNUM
+getFIGNUM <- function(){
+    .FIGNUM <<- .FIGNUM +1
+    .FIGNUM
+}
+
+getTABNUM <- function(){
+  .TABNUM <<- .TABNUM +1
+  .TABNUM
+}
+
+
+BayesianTrendFSI <- function( catch.rate, FSI.threshold, postthin=.1){
+   # do a bayesian trend analysis on the cpue data and and compute the 
+   # posterior probability of belonging to each FSI category
+   # and create some plots
+  
+   # Input data
+   #     catch.rate - data frame with 
+   #         WatershedName  - name of watershed
+   #         Species.Code   - species codes (could be multiple)
+   #         LocationTTM    - names of locations of sampling
+   #         Year           - year of data
+   #         CPUE.300m      - fish per 300 m
+   #
+   #     FSI.threshold - data frame with FSI thresholds by species
+   #         Species.Code   - species
+   #         FSI.num.cat    - numerical FSI category
+   #         FSI.cat        - FSI category (alphabetic)
+   #         lower          - lower value (CPUE.300m/300 m)
+   #         upper          - upper value (CPUE.300m/300 m)
+   #
+   #     postthin           - what fraction of posterior should be plotted (to make plots smaller)
+   # Output is a list with several plots and summary statistics (see end of function)
+  
+
+#----------------------------------------------------------------------------------------
+# Fit a bayesian model to estimate p(being in each risk category) and credible intervals
+# but with a linear trend over time to "smooth" the risk.
+# It would be possible to fit a spline in a more complex model but this is not done here
+
+
+
+# The model file.
+# The cat() command is used to save the model to the working directory.
+# Notice that you CANNOT have any " (double quotes) in the bugs code
+# between the start and end of the cat("...",) command.
+
+cat(file="model.txt", "
+    ############################################################
+    data {
+       Nspecies <- max(Species.num)
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+       minYear  <- min(Year)
+    }    
+
+    model {
+    
+    # log normal distribution of single pass electrofishing values
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          mu.trend  [i,j] <- beta0[j]+beta1[j]*i
+          mu.process[i,j] <- mu.trend[i,j] + year.eff[i,j]
+       }
+    }
+    for(i in 1:Ndata){
+       mu.data[i] <- mu.trend[Year.num[i],Species.num[i]] + 
+                     site.eff[Site.num[i],Species.num[i]] +  
+                     year.eff[Year.num[i],Species.num[i]]
+       Density[i] ~ dlnorm( mu.data[i], tau[Species.num[i]])
+    }
+
+    # tau is 1/sd
+    for(i in 1:Nspecies){
+       tau[i] <- 1/(sd[i]*sd[i])
+       sd[i] ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    }
+
+    # priors for the intercept and slope
+    for(i in 1:Nspecies){
+       beta0[i] ~ dnorm(0, .001)
+       beta1[i] ~ dnorm(0, .001)
+    }
+
+    # random effect of Year for each species
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          year.eff[i,j] ~ dnorm(0, tau.year.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.year.eff[i] <- 1/(sd.year.eff[i]*sd.year.eff[i])
+       sd.year.eff[i]  ~ dunif(.01,2)
+    }
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+       for(j in 1:Nspecies){
+          site.eff[i,j] ~ dnorm(0, tau.site.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.site.eff[i] <- 1/(sd.site.eff[i]*sd.site.eff[i])
+       sd.site.eff[i]  ~ dunif(.01, 2)
+    }
+
+
+    # what is the probability that the trend is negative
+    for(i in 1:Nspecies){
+       p.beta1.lt.0[i] <- ifelse(beta1[i]<0,1,0)
+    }
+
+
+   # derived variables.
+   # med.den is antilog of  lognormal 
+   for(i in 1:Ndata){
+      med.den[i] <- exp(mu.data[i])
    }
-   cat(   'Finished propogating entries to blank rows \n')
-   print(head(fish))
 
-   fish.old <- fish
-   # Convert to R dates. The date columns has been transformed as the number of day since the Excel orgin (1990-01-01)
-   cat(    'Converting start and end dates to R format \n')
-   select <- grepl('Start.Date', names(fish))
-   names(fish)[select] <- 'Start.Date'
-   fish$Start.Date <- as.Date(as.numeric(fish$Start.Date), origin=as.Date('1900-01-01')-2)
+   for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          med.den.trend [i, j] <- exp(mu.trend  [i,j])
+          med.den.process[i,j] <- exp(mu.process[i,j])
+       }
+    }
 
-   select <- grepl('End.Date', names(fish))
-   names(fish)[select] <- 'End.Date'
-   fish$End.Date <- as.Date(as.numeric(fish$End.Date), origin=as.Date('1900-01-01')-2)
-
-   # check the diatance and time value
-   xtabs(~Distance..m., data=fish, exclude=NULL, na.action=na.pass)
-   fish$Distance..m. <- as.numeric(fish$Distance..m.)
-   
-   xtabs(~Time..seconds., data=fish, exclude=NULL, na.action=na.pass)
-   fish$Time..seconds. <- as.numeric(fish$Time..seconds.)
-   
-   # check to see which equipment code is being used.
-   # browser()
-   fish$Equipment.Type.Code <- tolower(fish$Equipment.Type.Code)
-   fish <- fish[fish$Equipment.Type.Code %in% tolower(select.equipment),]  # select which equipment is used
-   fish$Type <- select.equipment
-   
-   # Extract the unique survey name, site, date, length (m and sec)
-   site.date <- unique( fish[, c("Location..","Start.Date","Time..seconds.","Distance..m.")])
-   dim(site.date)
-   cat("\n\n\nWhat are the unique sites/dates in this worksheet????\n")
-   print(site.date)
-
-   # Deal with the counting section of the worksheet.
-   # Here fish are counted (but not measured)
-
-   # Pull out the species codes for counted (but not measured fish)
-   cat("\n\n\nCheck the species codes for counted but not measured fish \n")
-   print(xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass))
-   fish$Species.Code <- toupper(substring(fish$Species.Code, nchar(fish$Species.Code)-3))
-   print(xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass))
-
-   # convert the oberved count to numeric and remove all NA
-   cat("\n\n\nCheck the observed counts\n")
-   print(xtabs(~Observed.Count, data=fish, exclude=NULL, na.action=na.pass))
-
-   # remove any > sign
-   cat("\n\n Removing any > signs\n")
-   fish$Observed.Count <- gsub(">","", fish$Observed.Count, fixed=TRUE)
-   fish$Observed.Count <- as.numeric(fish$Observed.Count)
-   fish.count <- fish[ !is.na(fish$Observed.Count),]
-   cat("\n\nFinal tabuation of species counts")
-   print(xtabs(~Observed.Count, data=fish.count, exclude=NULL, na.action=na.pass))
-
-   # Summarized to the Site, Date level of the counted quantities
-   fish.count <- plyr::ddply(fish.count, 
-                    c("Location..","Type","Start.Date","Time..seconds.","Distance..m.","Species.Code"),function(x){
-                     Count=sum(x$Observed.Count, na.rm=TRUE)
-                     equip.type=paste(substr(unique(x$Equipment.Type.Code),1,1),sep="", collapse="")
-                     data.type="count"
-                     data.frame(Count=Count, equip.type=equip.type, data.type='count')
-                     })
-
-   # Deal with the measured fish section of the worksheet
-   # Summarize to the Site, Date level of the measured fish
-   cat("\n\n\nCheck the species codes for measured fish \n")
-   print(xtabs(~Species.Code.1, data=fish, exclude=NULL, na.action=na.pass))
-   fish$Species.Code.1 <- substring(fish$Species.Code.1, nchar(fish$Species.Code.1)-3)
-   fish$Species.Code.1 <- toupper(fish$Species.Code.1)
-   print(xtabs(~Species.Code.1, data=fish, exclude=NULL, na.action=na.pass))
-
-   # Summarized to the Site, Date level of the counted quantities
-   fish.measure <- plyr::ddply(fish, 
-                       c("Location..","Type","Start.Date","Time..seconds.","Distance..m.","Species.Code.1"),function(x){
-                        Count=length(x$Species.Code.1)
-                        data.type="measure"
-                        equip.type=paste(substr(unique(x$Equipment.Type.Code),1,1),sep="", collapse="")
-                        data.frame(Count=Count, equip.type=equip.type, data.type=data.type)
-                    })
-   names(fish.measure)[ names(fish.measure)=='Species.Code.1'] <- 'Species.Code'
-   cat("\n\nSummary of fish measured \n")
-   print(head(fish.measure))
-   
-
-   # add 0's for no fish of a species caught on a site/date combinations
-   # We only want the set of unique codes seen somewhere in this worksheets
-   watershed.species <- toupper(unique(c(fish.count$Species.Code, fish.measure$Species.Code)))
-   cat("\n\nImputing zeros \n")
-   zero.count <- plyr::ldply(watershed.species, function(Species.Code, site.date, Type){
-       site.date$Species.Code   <- Species.Code
-       site.date$Count <- 0
-       site.date$Type  <- Type
-       site.date
-   }, site.date=site.date, Type=select.equipment)
-   zero.count$data.type = ''
-   zero.count$equip.type=""
-   #browser()
-   # select which sources of information to be combined together
-   data.list <- list(zero.count=zero.count)
-   if('measure' %in% select.data)data.list <- c(data.list, list(fish.measure=fish.measure))
-   if('count'   %in% select.data)data.list <- c(data.list, list(fish.count  =fish.count))
-   fish.sum <- do.call("rbind", data.list)  # combine the dataset togethter
-   fish.sum <- plyr::ddply(fish.sum, 
-        c("Location..","Type","Start.Date","Species.Code"), function(x){
-          Time..seconds. <- sum(x$Time..seconds., na.rm=TRUE)
-          Distance..m.   <- sum(x$Distance..m.  , na.rm=TRUE)
-          Count <-sum(x$Count, na.rm=TRUE)
-          data.type =paste(substr(unique(x$data.type),1,1),sep="",collapse="")
-          equip.type=paste(substr(x$equip.type,1,1),sep="", collapse="")
-          data.frame(Count=Count, data.type=data.type, equip.type=equip.type, 
-                     Time..seconds.=Time..seconds.,
-                     Distance..m. = Distance..m.)})
-      
-   # Remove records from non-target species
-   cat("\n\nRetaining records only for target species", target.species,  "\n")
-   fish.sum <- fish.sum[ toupper(fish.sum$Species.Code) %in% toupper(target.species),]
-   dim(fish.sum)
-
-   
-   fish.sum$Watershed <- WatershedName
-   fish.sum$Year      <- as.numeric(format(fish.sum$Start.Date, "%Y"))
-   #browser()
-
-   # convert to count/100m or count/100s and stack these two measurements
-   # together
-   if(tolower(select.equipment) %in% tolower('Backpack')){
-      fish.sum$Count_100m <- fish.sum$Count/fish.sum$Distance..m. *100
-      fish.sum$Count_100s <- fish.sum$Count/fish.sum$Time..seconds. * 100
-      fish.measure.vars <- c("Count_100m","Count_100s")
-   }
-   if(tolower(select.equipment) %in% tolower('Float')){
-      fish.sum$Count_km   <- fish.sum$Count/fish.sum$Distance..m. *1000
-      fish.sum$Count_100s <- fish.sum$Count/fish.sum$Time..seconds. * 100
-      fish.measure.vars <- c("Count_km","Count_100s")
+   # probability of being in a threshold category for individual observations
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat[i,j,k] <- ifelse((med.den.process[i,j] >= FSI.lower[j,k]) && (med.den.process[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
    }
 
-   # convert from wide to long format
-   fish.long <- reshape2::melt(fish.sum, 
-                  id.vars=c("Watershed",'Location..',"Type","Year",'Start.Date','Species.Code',"data.type","equip.type"),
-                  measure.vars=fish.measure.vars,
-                  variable.name="Measure",
-                  value.name='value')
-   fish.long$Measure <- as.character(fish.long$Measure)  # convert from factor to character
-   fish.long$Measure <- paste(fish.long$Species.Code,substring(fish.long$Measure,6),sep="")
-   cat("Standardize to per 100m and per 100s\n")
-   print(head(fish.long))
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat.trend[i,j,k] <- ifelse((med.den.trend[i,j] >= FSI.lower[j,k]) && (med.den.trend[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+}
+") # End of the model
 
-   fish.long
+
+
+# Next create the data.txt file.
+# Initialize the data values using standard R code by either reading
+# in from an external file, or plain assignment.
+
+# The datalist will be passed to JAGS with the names of the data
+# values.
+
+dim(catch.rate)
+catch.rate.red <- catch.rate[ !is.na(catch.rate$CPUE.300m),]
+dim(catch.rate.red)
+
+# Convert the species code to a species number because JAGS cannot use character data
+species.code <- data.frame(Species.Code =unique(catch.rate.red$Species),
+                           Species.num  =1:length(unique(catch.rate.red$Species)), stringsAsFactors=FALSE)
+species.code
+catch.rate.red <- merge(catch.rate.red, species.code)
+xtabs(~Species.Code+Species.num, data=catch.rate.red, exclude=NULL, na.action=na.pass)
+
+FSI.threshold.select <- FSI.threshold[ FSI.threshold$Species.Code %in% species.code$Species.Code,]
+FSI.threshold.select <- merge(FSI.threshold.select, species.code)
+FSI.threshold.select <- FSI.threshold.select[ order(FSI.threshold.select$Species.num,FSI.threshold.select$FSI.cat ),]
+
+# Convert year number to a unique year number
+year.code <- data.frame(Year    =sort(unique(catch.rate.red$Year)), 
+                        Year.num=1:length(unique(catch.rate.red$Year)))
+year.code
+catch.rate.red <- merge(catch.rate.red, year.code)
+head(catch.rate.red)
+
+# Convert LocationTTM to a unique numeric values
+site.code <- data.frame(LocationTTM  =unique(catch.rate.red$LocationTTM),
+                        Site.num =1:length(unique(catch.rate.red$LocationTTM)), stringsAsFactors=FALSE)
+site.code
+catch.rate.red <- merge(catch.rate.red, site.code)
+head(catch.rate.red)
+
+catch.rate.red <- catch.rate.red[ order(catch.rate.red$Species.num, catch.rate.red$Year.num, catch.rate.red$Site.num),]
+
+
+
+
+data.list <- list(Ndata      =nrow(catch.rate.red),
+                  Year.num   =catch.rate.red$Year.num,
+                  Year       =catch.rate.red$Year,
+                  YearUnique =sort(unique(catch.rate.red$Year)),
+                  Site.num   =catch.rate.red$Site.num,
+                  Species.num=catch.rate.red$Species.num,
+                  Density    =catch.rate.red$CPUE.300m+.1*min(catch.rate.red$CPUE.300m[catch.rate.red$CPUE.300m>0]),
+                  NFSI       =5,
+                  FSI.lower  =matrix(FSI.threshold.select$lower, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE),
+                  FSI.upper  =matrix(FSI.threshold.select$upper, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE))
+data.list
+
+
+
+
+
+
+# Next create the initial values.
+# If you are using more than one chain, you need to create a function
+# that returns initial values for each chain.
+
+init.list <- list(
+   list(), list(), list()
+)
+
+
+
+
+
+
+
+# Next create the list of parameters to monitor.
+# The deviance is automatically monitored.
+# 
+monitor.list <- c("mu.data","mu.trend","site.eff","year.eff",
+                  "sd","sd.year.eff","sd.site.eff",
+                  "med.den", "med.den.trend","med.den.process",
+                  "prob.FSI.cat","prob.FSI.cat.trend",
+                  "beta0","beta1","p.beta1.lt.0")
+
+
+
+
+# Finally, the actual call to JAGS
+set.seed(4534534)  # intitalize seed for MCMC 
+
+results <- jags( 
+  data      =data.list,   # list of data variables
+  inits     =init.list,   # list/function for initial values
+  parameters=monitor.list,# list of parameters to monitor
+  model.file="model.txt",  # file with bugs model
+  n.chains=3,
+  n.iter  =10000,          # total iterations INCLUDING burn in
+  n.burnin=2000,          # number of burning iterations
+  n.thin=2,               # how much to thin
+  DIC=TRUE,               # is DIC to be computed?
+  working.dir=getwd()    # store results in current working directory
+)
+
+
+# now results is a BIG list of stuff
+names(results)
+names(results$BUGSoutput)
+
+#
+#######################################
+# extract some of the usual stuff and use R code directly
+# use the standard print method
+results
+
+# get the summary table
+results$BUGSoutput$summary
+results$BUGSoutput$summary[,c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+results$BUGSoutput$summary[grepl("sd",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+results$BUGSoutput$summary[grepl("beta",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+# make a table of the slope etc
+# Need to customize the code to deal with the case of a single species where [] are not given
+if(nrow(species.code) > 1){
+   beta.table <- data.frame(Species.num=row.names(results$BUGSoutput$summary)[(grepl("beta1[",row.names(results$BUGSoutput$summary),fixed=TRUE))],
+                            slope      =results$BUGSoutput$mean$beta1,
+                            sd         =results$BUGSoutput$sd$beta1,
+                            p.slope.lt.0=results$BUGSoutput$mean$p.beta1.lt.0, stringsAsFactors=FALSE)
+   beta.table$Species.num <- as.numeric(substr(beta.table$Species.num,1+regexpr('[',beta.table$Species.num, fixed=TRUE),
+                                                       -1+regexpr(']',beta.table$Species.num, fixed=TRUE)))}
+if(nrow(species.code) == 1){
+   beta.table <- data.frame(Species.num=1,
+                            slope      =results$BUGSoutput$mean$beta1,
+                            sd         =results$BUGSoutput$sd$beta1,
+                            p.slope.lt.0=results$BUGSoutput$mean$p.beta1.lt.0, stringsAsFactors=FALSE)}
+beta.table <- merge(species.code, beta.table)
+beta.table
+
+# get just the means
+results$BUGSoutput$mean
+results$BUGSoutput$mean$parm
+
+
+# Extract the means and posterior density plots for each species
+select <- grepl('^med.den.process[', row.names(results$BUGSoutput$summary), fixed=TRUE)
+meandata <- data.frame(med.density=matrix(results$BUGSoutput$mean$med.den.process, ncol=1))
+meandata$Year.num <- 1:nrow(results$BUGSoutput$mean$med.den.process)
+meandata$Species.num <- rep(1:ncol(results$BUGSoutput$mean$med.den.process), each=nrow(results$BUGSoutput$mean$med.den.process))
+meandata <- merge(meandata, species.code)
+meandata <- merge(meandata, year.code)
+head(meandata)
+all.year.species <- expand.grid(Year        =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code=unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+meandata <- merge(meandata, all.year.species, all=TRUE)
+
+# Extract the underlying trend
+select <- grepl('^mu.trend', row.names(results$BUGSoutput$summary))
+trenddata <- data.frame(med.density=results$BUGSoutput$summary[select, "mean"])
+trenddata$Year.Species <- row.names(results$BUGSoutput$summary)[select]
+trenddata$Year.Species <- gsub("mu.trend[","", trenddata$Year.Species, fixed=TRUE)
+trenddata$Year.Species <- gsub("]",  "", trenddata$Year.Species, fixed=TRUE)
+head(trenddata)
+# convert the year,species code to actual years and species
+trenddata$Year.num   <- as.numeric(substr(trenddata$Year.Species,1,-1+regexpr(',',trenddata$Year.Species)))
+trenddata$Species.num<- as.numeric(substring(trenddata$Year.Species,1+regexpr(',',trenddata$Year.Species)))
+head(trenddata)
+trenddata <- merge(trenddata, species.code)
+trenddata <- merge(trenddata, year.code)
+head(trenddata)
+all.year.species <- expand.grid(Year         =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code =unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+trenddata <- merge(trenddata, all.year.species, all=TRUE)
+trenddata$med.density = exp(trenddata$med.density) # convert from log to median
+
+# get the posterior density values
+select <- grepl('^mu.trend', colnames(results$BUGSoutput$sims.matrix))
+thin <- runif(nrow(results$BUGSoutput$sims.matrix)) <= postthin  # select portion of posterior prob rows
+plotdata <- reshape2::melt(as.data.frame( results$BUGSoutput$sims.matrix[, select]),
+                           variable.name='Year.Species',
+                           value.name='med.density')
+plotdata$Year.Species <- gsub("mu.trend[","", plotdata$Year.Species, fixed=TRUE)
+plotdata$Year.Species <- gsub("]",  "", plotdata$Year.Species, fixed=TRUE)
+head(plotdata)
+# convert the year,species code to actual years and species
+plotdata$Year.num   <- as.numeric(substr(plotdata$Year.Species,1,-1+regexpr(',',plotdata$Year.Species)))
+plotdata$Species.num<- as.numeric(substring(plotdata$Year.Species,1+regexpr(',',plotdata$Year.Species)))
+head(plotdata)
+plotdata <- merge(plotdata, species.code)
+plotdata <- merge(plotdata, year.code)
+plotdata$med.density <- exp(plotdata$med.density)
+head(plotdata)
+# make a plot of the posterior median for each species x year 
+# with the superimposed trend
+
+postplot <- ggplot2::ggplot( data=meandata, aes(x=Year, y=med.density))+
+  ggtitle("Estimated MEDIAN density with trend line")+
+  ylab("Median from fitted model and posterior beliefs")+
+  geom_point(data=plotdata, aes(group=Year), alpha=0.01, position=position_jitter(w=0.2))+
+  geom_point(color="red")+
+  geom_line(data=meandata[!is.na(meandata$Year.num),],color="red", size=1)+
+  geom_line(data=trenddata[!is.na(trenddata$Year.num),], aes(x=Year, y=med.density), color="blue", size=2)+
+  geom_hline(data=FSI.threshold.select, aes(yintercept=lower), alpha=1, color="green")+
+  facet_wrap(~Species.Code, ncol=1, scales="free_y")
+postplot
+
+#browser()
+
+# plot of the probability of being in each category over time for the underlying trend
+# dimensions are prob.FSI.cat[year, species.num, category]
+prob.FSI.cat <- results$BUGSoutput$mean$prob.FSI.cat.trend
+prob.FSI.cat[1,1,]
+plotdata <- data.frame(prob=matrix(prob.FSI.cat,ncol=1))
+plotdata$Year.num    <- rep(1:nrow(year.code))
+plotdata$Species.num <- rep(1:nrow(species.code), each=nrow(year.code))
+plotdata$FSI.num.cat <- rep(1:length(unique(FSI.threshold$FSI.num.cat)), each=nrow(species.code)*nrow(year.code))
+# convert the year, species, numeric code to actual year, species, and FSI category
+plotdata <- merge(plotdata, year.code,        all=TRUE)
+plotdata <- merge(plotdata, species.code, all=TRUE)
+plotdata <- merge(plotdata, FSI.threshold[,c("Species.Code","FSI.num.cat","FSI.cat")])
+plotdata
+prob.fsi.cat.trend <- plotdata
+
+
+# for stacked bar charts for each species
+# we need to sort the data frame in reverse order of FSI category
+plotdata <- plotdata[ order(plotdata$FSI.cat),] #, decreasing=TRUE),]
+plotdata$FSI.cat2 <- factor(plotdata$FSI.cat, levels=rev(levels(plotdata$FSI.cat)), order=TRUE)
+fsi.plot <- ggplot(data=plotdata, aes(x=Year, y=prob, fill=FSI.cat2))+
+  ggtitle("Probability of being in FSI category based on trend line")+
+  ylab("Cumulative probability of being in FSI category")+
+  geom_bar(stat="identity")+
+  scale_fill_brewer(palette="RdYlGn", direction =-1, name="FSI\nCategory")+
+  facet_wrap(~Species.Code, ncol=1)
+fsi.plot
+
+# Return the results and plots
+  list(species.code=species.code,
+       year.code=year.code,
+       site.code=site.code,
+       beta.table=beta.table,
+       meandata =meandata,
+       trenddata=trenddata,
+       postplot = postplot,
+       fsi.plot  = fsi.plot,
+       prob.fsi.cat.trend = prob.fsi.cat.trend,  # probability of being in each fsi category
+       results  = results  # all of the BUGs output
+       )
+}
+
+BayesianNoTrendFSI <- function( catch.rate, FSI.threshold, postthin=.1){
+   # Typically USED WITH 2 YEARS of DATA when you cannot fit a slope 
+   # do a bayesian analysis on the cpue data and and compute the 
+   # posterior probability of belonging to each FSI category
+   # and create some plots
+  
+   # Input data
+   #     catch.rate - data frame with 
+   #         WatershedName  - name of watershed
+   #         Species.Code   - species codes (could be multiple)
+   #         LocationTTM    - names of locations of sampling
+   #         Year           - year of data
+   #         CPUE.300m      - fish per 300 m
+   #
+   #     FSI.threshold - data frame with FSI thresholds by species
+   #         Species.Code   - species
+   #         FSI.num.cat    - numerical FSI category
+   #         FSI.cat        - FSI category (alphabetic)
+   #         lower          - lower value (CPUE.300m/300 m)
+   #         upper          - upper value (CPUE.300m/300 m)
+   #
+   #     postthin           - what fraction of posterior should be plotted (to make plots smaller)
+   # Output is a list with several plots and summary statistics (see end of function)
+  
+
+#----------------------------------------------------------------------------------------
+# Fit a bayesian model to estimate p(being in each risk category) and credible intervals
+# but with NO linear trend over time to "smooth" the risk.
+# It would be possible to fit a spline in a more complex model but this is not done here
+
+
+
+# The model file.
+# The cat() command is used to save the model to the working directory.
+# Notice that you CANNOT have any " (double quotes) in the bugs code
+# between the start and end of the cat("...",) command.
+
+cat(file="model.txt", "
+    ############################################################
+    data {
+       Nspecies <- max(Species.num)
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+       minYear  <- min(Year)
+    }    
+
+    model {
+    
+    # log normal distribution of single pass electrofishing values
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          mu.trend  [i,j] <- beta0[j]    # No trend here
+          mu.process[i,j] <- mu.trend[i,j] + year.eff[i,j]
+       }
+    }
+    for(i in 1:Ndata){
+       mu.data[i] <- mu.trend[Year.num[i],Species.num[i]] + 
+                     site.eff[Site.num[i],Species.num[i]] +  
+                     year.eff[Year.num[i],Species.num[i]]
+       Density[i] ~ dlnorm( mu.data[i], tau[Species.num[i]])
+    }
+
+    # tau is 1/sd
+    for(i in 1:Nspecies){
+       tau[i] <- 1/(sd[i]*sd[i])
+       sd[i] ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    }
+
+    # priors for the intercept 
+    for(i in 1:Nspecies){
+       beta0[i] ~ dnorm(0, .001)
+    }
+
+    # random effect of Year for each species
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          year.eff[i,j] ~ dnorm(0, tau.year.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.year.eff[i] <- 1/(sd.year.eff[i]*sd.year.eff[i])
+       sd.year.eff[i]  ~ dunif(.01,2)
+    }
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+       for(j in 1:Nspecies){
+          site.eff[i,j] ~ dnorm(0, tau.site.eff[j])
+       }
+    }
+    for(i in 1:Nspecies){
+       tau.site.eff[i] <- 1/(sd.site.eff[i]*sd.site.eff[i])
+       sd.site.eff[i]  ~ dunif(.01, 2)
+    }
+
+
+   # derived variables.
+   # med.den is antilog of  lognormal 
+   for(i in 1:Ndata){
+      med.den[i] <- exp(mu.data[i])
+   }
+
+   for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          med.den.trend [i, j] <- exp(mu.trend  [i,j])
+          med.den.process[i,j] <- exp(mu.process[i,j])
+       }
+    }
+
+   # probability of being in a threshold category for individual observations
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat[i,j,k] <- ifelse((med.den.process[i,j] >= FSI.lower[j,k]) && (med.den.process[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat.trend[i,j,k] <- ifelse((med.den.trend[i,j] >= FSI.lower[j,k]) && (med.den.trend[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+}
+") # End of the model
+
+
+
+# Next create the data.txt file.
+# Initialize the data values using standard R code by either reading
+# in from an external file, or plain assignment.
+
+# The datalist will be passed to JAGS with the names of the data
+# values.
+
+dim(catch.rate)
+catch.rate.red <- catch.rate[ !is.na(catch.rate$CPUE.300m),]
+dim(catch.rate.red)
+
+# Convert the species code to a species number because JAGS cannot use character data
+species.code <- data.frame(Species.Code =unique(catch.rate.red$Species),
+                           Species.num  =1:length(unique(catch.rate.red$Species)), stringsAsFactors=FALSE)
+species.code
+catch.rate.red <- merge(catch.rate.red, species.code)
+xtabs(~Species.Code+Species.num, data=catch.rate.red, exclude=NULL, na.action=na.pass)
+
+FSI.threshold.select <- FSI.threshold[ FSI.threshold$Species.Code %in% species.code$Species.Code,]
+FSI.threshold.select <- merge(FSI.threshold.select, species.code)
+FSI.threshold.select <- FSI.threshold.select[ order(FSI.threshold.select$Species.num,FSI.threshold.select$FSI.cat ),]
+
+# Convert year number to a unique year number
+year.code <- data.frame(Year    =sort(unique(catch.rate.red$Year)), 
+                        Year.num=1:length(unique(catch.rate.red$Year)))
+year.code
+catch.rate.red <- merge(catch.rate.red, year.code)
+head(catch.rate.red)
+
+# Convert LocationTTM to a unique numeric values
+site.code <- data.frame(LocationTTM  =unique(catch.rate.red$LocationTTM),
+                        Site.num =1:length(unique(catch.rate.red$LocationTTM)), stringsAsFactors=FALSE)
+site.code
+catch.rate.red <- merge(catch.rate.red, site.code)
+head(catch.rate.red)
+
+catch.rate.red <- catch.rate.red[ order(catch.rate.red$Species.num, catch.rate.red$Year.num, catch.rate.red$Site.num),]
+
+
+
+
+data.list <- list(Ndata      =nrow(catch.rate.red),
+                  Year.num   =catch.rate.red$Year.num,
+                  Year       =catch.rate.red$Year,
+                  YearUnique =sort(unique(catch.rate.red$Year)),
+                  Site.num   =catch.rate.red$Site.num,
+                  Species.num=catch.rate.red$Species.num,
+                  Density    =catch.rate.red$CPUE.300m+.1*min(catch.rate.red$CPUE.300m[catch.rate.red$CPUE.300m>0]),
+                  NFSI       =5,
+                  FSI.lower  =matrix(FSI.threshold.select$lower, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE),
+                  FSI.upper  =matrix(FSI.threshold.select$upper, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE))
+data.list
+
+
+
+
+
+
+# Next create the initial values.
+# If you are using more than one chain, you need to create a function
+# that returns initial values for each chain.
+
+init.list <- list(
+   list(), list(), list()
+)
+
+
+
+
+
+
+
+# Next create the list of parameters to monitor.
+# The deviance is automatically monitored.
+# 
+monitor.list <- c("mu.data","mu.trend","site.eff","year.eff",
+                  "sd","sd.year.eff","sd.site.eff",
+                  "med.den", "med.den.trend","med.den.process",
+                  "prob.FSI.cat","prob.FSI.cat.trend",
+                  "beta0")
+
+
+
+
+# Finally, the actual call to JAGS
+set.seed(4534534)  # intitalize seed for MCMC 
+
+results <- jags( 
+  data      =data.list,   # list of data variables
+  inits     =init.list,   # list/function for initial values
+  parameters=monitor.list,# list of parameters to monitor
+  model.file="model.txt",  # file with bugs model
+  n.chains=3,
+  n.iter  =10000,          # total iterations INCLUDING burn in
+  n.burnin=2000,          # number of burning iterations
+  n.thin=2,               # how much to thin
+  DIC=TRUE,               # is DIC to be computed?
+  working.dir=getwd()    # store results in current working directory
+)
+
+
+NSpecies <- nrow(species.code)
+NYears   <- nrow(year.code)
+# now results is a BIG list of stuff
+names(results)
+names(results$BUGSoutput)
+
+#
+#######################################
+# extract some of the usual stuff and use R code directly
+# use the standard print method
+results
+
+# get the summary table
+results$BUGSoutput$summary
+results$BUGSoutput$summary[,c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+results$BUGSoutput$summary[grepl("sd",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+results$BUGSoutput$summary[grepl("beta",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+# make a table of the intercept
+# Need to customize the code to deal with the case of a single species where [] are not given
+if(nrow(species.code) > 1){
+   beta.table <- data.frame(Species.num=row.names(results$BUGSoutput$summary)[(grepl("beta0[",row.names(results$BUGSoutput$summary),fixed=TRUE))],
+                            intercept  =results$BUGSoutput$mean$beta0,
+                            sd         =results$BUGSoutput$sd$beta0,
+                            stringsAsFactors=FALSE)
+   beta.table$Species.num <- as.numeric(substr(beta.table$Species.num,1+regexpr('[',beta.table$Species.num, fixed=TRUE),
+                                                       -1+regexpr(']',beta.table$Species.num, fixed=TRUE)))}
+if(nrow(species.code) == 1){
+   beta.table <- data.frame(Species.num=1,
+                            intercept  =results$BUGSoutput$mean$beta0,
+                            sd         =results$BUGSoutput$sd$beta0,
+                            stringsAsFactors=FALSE)}
+beta.table <- merge(species.code, beta.table)
+beta.table
+
+# get just the means
+results$BUGSoutput$mean
+results$BUGSoutput$mean$parm
+
+
+# Extract the means and posterior density plots for each species
+select <- grepl('^med.den.process[', row.names(results$BUGSoutput$summary), fixed=TRUE)
+meandata <- data.frame(med.density=matrix(results$BUGSoutput$mean$med.den.process, ncol=1))
+meandata$Year.num <- 1:NYears
+meandata$Species.num <- rep(1:NSpecies, each=NYears)
+meandata <- merge(meandata, species.code)
+meandata <- merge(meandata, year.code)
+head(meandata)
+all.year.species <- expand.grid(Year        =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code=unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+meandata <- merge(meandata, all.year.species, all=TRUE)
+
+# Extract the underlying trend
+select <- grepl('^mu.trend', row.names(results$BUGSoutput$summary))
+trenddata <- data.frame(med.density=results$BUGSoutput$summary[select, "mean"])
+trenddata$Year.Species <- row.names(results$BUGSoutput$summary)[select]
+trenddata$Year.Species <- gsub("mu.trend[","", trenddata$Year.Species, fixed=TRUE)
+trenddata$Year.Species <- gsub("]",  "", trenddata$Year.Species, fixed=TRUE)
+head(trenddata)
+# convert the year,species code to actual years and species
+trenddata$Year.num   <- as.numeric(substr(trenddata$Year.Species,1,-1+regexpr(',',trenddata$Year.Species)))
+trenddata$Species.num<- as.numeric(substring(trenddata$Year.Species,1+regexpr(',',trenddata$Year.Species)))
+head(trenddata)
+trenddata <- merge(trenddata, species.code)
+trenddata <- merge(trenddata, year.code)
+head(trenddata)
+all.year.species <- expand.grid(Year         =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code =unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+trenddata <- merge(trenddata, all.year.species, all=TRUE)
+trenddata$med.density = exp(trenddata$med.density) # convert from log to median
+
+# get the posterior density values
+select <- grepl('^mu.trend', colnames(results$BUGSoutput$sims.matrix))
+thin <- runif(nrow(results$BUGSoutput$sims.matrix)) <= postthin  # select portion of posterior prob rows
+plotdata <- reshape2::melt(as.data.frame( results$BUGSoutput$sims.matrix[, select]),
+                           variable.name='Year.Species',
+                           value.name='med.density')
+plotdata$Year.Species <- gsub("mu.trend[","", plotdata$Year.Species, fixed=TRUE)
+plotdata$Year.Species <- gsub("]",  "", plotdata$Year.Species, fixed=TRUE)
+head(plotdata)
+# convert the year,species code to actual years and species
+plotdata$Year.num   <- as.numeric(substr(plotdata$Year.Species,1,-1+regexpr(',',plotdata$Year.Species)))
+plotdata$Species.num<- as.numeric(substring(plotdata$Year.Species,1+regexpr(',',plotdata$Year.Species)))
+head(plotdata)
+plotdata <- merge(plotdata, species.code)
+plotdata <- merge(plotdata, year.code)
+plotdata$med.density <- exp(plotdata$med.density)
+head(plotdata)
+# make a plot of the posterior median for each species x year 
+# with the superimposed trend
+#browser()
+postplot <- ggplot2::ggplot( data=meandata, aes(x=Year, y=med.density))+
+  ggtitle("Estimated MEDIAN density with trend line")+
+  ylab("Median from fitted model and posterior beliefs")+
+  geom_point(data=plotdata, aes(group=Year), alpha=0.01, position=position_jitter(w=0.2))+
+  geom_point(color="red")+
+  geom_line(data=meandata[!is.na(meandata$Year.num),],color="red", size=1)+
+  geom_line(data=trenddata[!is.na(trenddata$Year.num),], aes(x=Year, y=med.density), color="blue", size=2)+
+  geom_hline(data=FSI.threshold.select, aes(yintercept=lower), alpha=1, color="green")+
+  facet_wrap(~Species.Code, ncol=1, scales="free_y")
+postplot
+
+#browser()
+
+# plot of the probability of being in each category over time for the underlying trend
+# dimensions are prob.FSI.cat[year, species.num, category]
+prob.FSI.cat <- results$BUGSoutput$mean$prob.FSI.cat.trend
+prob.FSI.cat[1,1,]
+plotdata <- data.frame(prob=matrix(prob.FSI.cat,ncol=1))
+plotdata$Year.num    <- rep(1:nrow(year.code))
+plotdata$Species.num <- rep(1:nrow(species.code), each=nrow(year.code))
+plotdata$FSI.num.cat <- rep(1:length(unique(FSI.threshold$FSI.num.cat)), each=nrow(species.code)*nrow(year.code))
+# convert the year, species, numeric code to actual year, species, and FSI category
+plotdata <- merge(plotdata, year.code,        all=TRUE)
+plotdata <- merge(plotdata, species.code, all=TRUE)
+plotdata <- merge(plotdata, FSI.threshold[,c("Species.Code","FSI.num.cat","FSI.cat")])
+plotdata
+prob.fsi.cat.trend <- plotdata
+
+
+# for stacked bar charts for each species
+# we need to sort the data frame in reverse order of FSI category
+plotdata <- plotdata[ order(plotdata$FSI.cat),] #, decreasing=TRUE),]
+plotdata$FSI.cat2 <- factor(plotdata$FSI.cat, levels=rev(levels(plotdata$FSI.cat)), order=TRUE)
+fsi.plot <- ggplot(data=plotdata, aes(x=Year, y=prob, fill=FSI.cat2))+
+  ggtitle("Probability of being in FSI category based on trend line")+
+  ylab("Cumulative probability of being in FSI category")+
+  geom_bar(stat="identity")+
+  scale_fill_brewer(palette="RdYlGn", direction =-1, name="FSI\nCategory")+
+  facet_wrap(~Species.Code, ncol=1)
+fsi.plot
+
+# Return the results and plots
+  list(species.code=species.code,
+       year.code=year.code,
+       site.code=site.code,
+       beta.table=beta.table,
+       meandata =meandata,
+       trenddata=trenddata,
+       postplot = postplot,
+       fsi.plot  = fsi.plot,
+       prob.fsi.cat.trend = prob.fsi.cat.trend,  # probability of being in each fsi category
+       results  = results  # all of the BUGs output
+       )
+}
+
+
+BayesianSingleYearFSI <- function( catch.rate, FSI.threshold, postthin=.1){
+   # If you have only a single year of data, there isn't much that can be
+   # done since process error and sampling error (site effects) are completely
+   # confounded.
+  
+   # do a bayesian analysis on the cpue data and and compute the 
+   # posterior probability of belonging to each FSI category
+   # and create some plots
+  
+   # Input data
+   #     catch.rate - data frame with 
+   #         WatershedName  - name of watershed
+   #         Species.Code   - species codes (could be multiple)
+   #         LocationTTM    - names of locations of sampling
+   #         Year           - year of data
+   #         CPUE.300m      - fish per 300 m
+   #
+   #     FSI.threshold - data frame with FSI thresholds by species
+   #         Species.Code   - species
+   #         FSI.num.cat    - numerical FSI category
+   #         FSI.cat        - FSI category (alphabetic)
+   #         lower          - lower value (CPUE.300m/300 m)
+   #         upper          - upper value (CPUE.300m/300 m)
+   #
+   #     postthin           - what fraction of posterior should be plotted (to make plots smaller)
+   # Output is a list with several plots and summary statistics (see end of function)
+  
+
+#----------------------------------------------------------------------------------------
+# Fit a bayesian model to estimate p(being in each risk category) and credible intervals
+# based on a single year of data
+
+# The model file.
+# The cat() command is used to save the model to the working directory.
+# Notice that you CANNOT have any " (double quotes) in the bugs code
+# between the start and end of the cat("...",) command.
+
+cat(file="model.txt", "
+    ############################################################
+    data {
+       Nspecies <- max(Species.num)
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+       minYear  <- min(Year)
+    }    
+
+    model {
+    
+    # log normal distribution of single pass electrofishing values
+    for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          mu.trend  [i,j] <- beta0[j]    # No trend here
+       }
+    }
+    for(i in 1:Ndata){
+       mu.data[i] <- mu.trend[Year.num[i],Species.num[i]]
+       Density[i] ~ dlnorm( mu.data[i], tau[Species.num[i]])
+    }
+
+    # tau is 1/sd
+    for(i in 1:Nspecies){
+       tau[i] <- 1/(sd[i]*sd[i])
+       sd[i] ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    }
+
+    # priors for the intercept 
+    for(i in 1:Nspecies){
+       beta0[i] ~ dnorm(0, .001)
+    }
+
+   # derived variables.
+   # med.den is antilog of  lognormal 
+   for(i in 1:Ndata){
+      med.den[i] <- exp(mu.data[i])
+   }
+
+   for(i in 1:Nyears){
+       for(j in 1:Nspecies){
+          med.den.trend [i, j] <- exp(mu.trend  [i,j])
+          med.den.process[i,j] <- med.den.trend [i,j]
+       }
+    }
+
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(j in 1:Nspecies){
+         for(k in 1:NFSI){
+             prob.FSI.cat.trend[i,j,k] <- ifelse((med.den.trend[i,j] >= FSI.lower[j,k]) && (med.den.trend[i,j] < FSI.upper[j,k]),1,0)
+         }
+      }
+   }
+}
+") # End of the model
+
+
+
+# Next create the data.txt file.
+# Initialize the data values using standard R code by either reading
+# in from an external file, or plain assignment.
+
+# The datalist will be passed to JAGS with the names of the data
+# values.
+
+dim(catch.rate)
+catch.rate.red <- catch.rate[ !is.na(catch.rate$CPUE.300m),]
+dim(catch.rate.red)
+
+# Convert the species code to a species number because JAGS cannot use character data
+species.code <- data.frame(Species.Code =unique(catch.rate.red$Species),
+                           Species.num  =1:length(unique(catch.rate.red$Species)), stringsAsFactors=FALSE)
+species.code
+catch.rate.red <- merge(catch.rate.red, species.code)
+xtabs(~Species.Code+Species.num, data=catch.rate.red, exclude=NULL, na.action=na.pass)
+
+FSI.threshold.select <- FSI.threshold[ FSI.threshold$Species.Code %in% species.code$Species.Code,]
+FSI.threshold.select <- merge(FSI.threshold.select, species.code)
+FSI.threshold.select <- FSI.threshold.select[ order(FSI.threshold.select$Species.num,FSI.threshold.select$FSI.cat ),]
+
+# Convert year number to a unique year number
+year.code <- data.frame(Year    =sort(unique(catch.rate.red$Year)), 
+                        Year.num=1:length(unique(catch.rate.red$Year)))
+year.code
+catch.rate.red <- merge(catch.rate.red, year.code)
+head(catch.rate.red)
+
+# Convert LocationTTM to a unique numeric values
+site.code <- data.frame(LocationTTM  =unique(catch.rate.red$LocationTTM),
+                        Site.num =1:length(unique(catch.rate.red$LocationTTM)), stringsAsFactors=FALSE)
+site.code
+catch.rate.red <- merge(catch.rate.red, site.code)
+head(catch.rate.red)
+
+catch.rate.red <- catch.rate.red[ order(catch.rate.red$Species.num, catch.rate.red$Year.num, catch.rate.red$Site.num),]
+
+
+
+
+data.list <- list(Ndata      =nrow(catch.rate.red),
+                  Year.num   =catch.rate.red$Year.num,
+                  Year       =catch.rate.red$Year,
+                  YearUnique =sort(unique(catch.rate.red$Year)),
+                  Site.num   =catch.rate.red$Site.num,
+                  Species.num=catch.rate.red$Species.num,
+                  Density    =catch.rate.red$CPUE.300m+.1*min(catch.rate.red$CPUE.300m[catch.rate.red$CPUE.300m>0]),
+                  NFSI       =5,
+                  FSI.lower  =matrix(FSI.threshold.select$lower, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE),
+                  FSI.upper  =matrix(FSI.threshold.select$upper, nrow=length(unique(catch.rate.red$Species.Code)), ncol=5, byrow=TRUE))
+data.list
+
+
+
+
+
+
+# Next create the initial values.
+# If you are using more than one chain, you need to create a function
+# that returns initial values for each chain.
+
+init.list <- list(
+   list(), list(), list()
+)
+
+
+
+
+
+
+
+# Next create the list of parameters to monitor.
+# The deviance is automatically monitored.
+# 
+monitor.list <- c("mu.data","mu.trend","site.eff","year.eff",
+                  "sd","sd.year.eff","sd.site.eff",
+                  "med.den", "med.den.trend","med.den.process",
+                  "prob.FSI.cat","prob.FSI.cat.trend",
+                  "beta0")
+
+
+
+
+# Finally, the actual call to JAGS
+set.seed(4534534)  # intitalize seed for MCMC 
+
+results <- jags( 
+  data      =data.list,   # list of data variables
+  inits     =init.list,   # list/function for initial values
+  parameters=monitor.list,# list of parameters to monitor
+  model.file="model.txt",  # file with bugs model
+  n.chains=3,
+  n.iter  =10000,          # total iterations INCLUDING burn in
+  n.burnin=2000,          # number of burning iterations
+  n.thin=2,               # how much to thin
+  DIC=TRUE,               # is DIC to be computed?
+  working.dir=getwd()    # store results in current working directory
+)
+
+
+
+NSpecies <- nrow(species.code)
+NYear    <- nrow(year.code)
+
+
+# now results is a BIG list of stuff
+names(results)
+names(results$BUGSoutput)
+
+#
+#######################################
+# extract some of the usual stuff and use R code directly
+# use the standard print method
+results
+
+# get the summary table
+results$BUGSoutput$summary
+results$BUGSoutput$summary[,c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+results$BUGSoutput$summary[grepl("sd",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+results$BUGSoutput$summary[grepl("beta",row.names(results$BUGSoutput$summary)),c("mean", "sd", "2.5%","97.5%","Rhat", "n.eff")]
+
+# make a table of the intercept
+# Need to customize the code to deal with the case of a single species where [] are not given
+if(nrow(species.code) > 1){
+   beta.table <- data.frame(Species.num=row.names(results$BUGSoutput$summary)[(grepl("beta0[",row.names(results$BUGSoutput$summary),fixed=TRUE))],
+                            intercept  =results$BUGSoutput$mean$beta0,
+                            sd         =results$BUGSoutput$sd$beta0,
+                            stringsAsFactors=FALSE)
+   beta.table$Species.num <- as.numeric(substr(beta.table$Species.num,1+regexpr('[',beta.table$Species.num, fixed=TRUE),
+                                                       -1+regexpr(']',beta.table$Species.num, fixed=TRUE)))}
+if(nrow(species.code) == 1){
+   beta.table <- data.frame(Species.num=1,
+                            intercept  =results$BUGSoutput$mean$beta0,
+                            sd         =results$BUGSoutput$sd$beta0,
+                            stringsAsFactors=FALSE)}
+beta.table <- merge(species.code, beta.table)
+beta.table
+
+# get just the means
+results$BUGSoutput$mean
+results$BUGSoutput$mean$parm
+
+
+# Extract the means and posterior density plots for each species
+select <- grepl('^med.den.process[', row.names(results$BUGSoutput$summary), fixed=TRUE)
+meandata <- data.frame(med.density=matrix(results$BUGSoutput$mean$med.den.process, ncol=1))
+meandata$Year.num <- 1:NYear
+meandata$Species.num <- rep(1:NSpecies, each=NYear)
+meandata <- merge(meandata, species.code)
+meandata <- merge(meandata, year.code)
+head(meandata)
+all.year.species <- expand.grid(Year        =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code=unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+meandata <- merge(meandata, all.year.species, all=TRUE)
+
+# Extract the underlying trend
+select <- grepl('^mu.trend', row.names(results$BUGSoutput$summary))
+trenddata <- data.frame(med.density=results$BUGSoutput$summary[select, "mean"])
+trenddata$Year.Species <- paste(1,",",1:NSpecies, sep="")
+head(trenddata)
+# convert the year,species code to actual years and species
+trenddata$Year.num   <- as.numeric(substr(trenddata$Year.Species,1,-1+regexpr(',',trenddata$Year.Species)))
+trenddata$Species.num<- as.numeric(substring(trenddata$Year.Species,1+regexpr(',',trenddata$Year.Species)))
+head(trenddata)
+trenddata <- merge(trenddata, species.code)
+trenddata <- merge(trenddata, year.code)
+head(trenddata)
+all.year.species <- expand.grid(Year         =min(catch.rate$Year,na.rm=TRUE):max(catch.rate$Year, na.rm=TRUE),
+                                Species.Code =unique(catch.rate$Species.Code),stringsAsFactors=FALSE)
+trenddata <- merge(trenddata, all.year.species, all=TRUE)
+trenddata$med.density = exp(trenddata$med.density) # convert from log to median
+
+# get the posterior density values
+select <- grepl('^mu.trend', colnames(results$BUGSoutput$sims.matrix))
+thin <- runif(nrow(results$BUGSoutput$sims.matrix)) <= postthin  # select portion of posterior prob rows
+plotdata <- reshape2::melt(as.data.frame( results$BUGSoutput$sims.matrix[, select]),
+                           variable.name='Year.Species',
+                           value.name='med.density')
+plotdata$Year.Species <- "1,1"
+head(plotdata)
+# convert the year,species code to actual years and species
+plotdata$Year.num   <- as.numeric(substr(plotdata$Year.Species,1,-1+regexpr(',',plotdata$Year.Species)))
+plotdata$Species.num<- as.numeric(substring(plotdata$Year.Species,1+regexpr(',',plotdata$Year.Species)))
+head(plotdata)
+plotdata <- merge(plotdata, species.code)
+plotdata <- merge(plotdata, year.code)
+plotdata$med.density <- exp(plotdata$med.density)
+head(plotdata)
+# make a plot of the posterior median for each species x year 
+# with the superimposed trend
+
+postplot <- ggplot2::ggplot( data=meandata, aes(x=Year, y=med.density))+
+  ggtitle("Estimated MEDIAN density with trend line")+
+  ylab("Median from fitted model and posterior beliefs")+
+  geom_point(data=plotdata, aes(group=Year), alpha=0.01, position=position_jitter(w=0.2))+
+  geom_point(color="red")+
+  geom_line(data=meandata[!is.na(meandata$Year.num),],color="red", size=1)+
+  geom_line(data=trenddata[!is.na(trenddata$Year.num),], aes(x=Year, y=med.density), color="blue", size=2)+
+  geom_hline(data=FSI.threshold.select, aes(yintercept=lower), alpha=1, color="green")+
+  facet_wrap(~Species.Code, ncol=1, scales="free_y")
+postplot
+
+#browser()
+
+# plot of the probability of being in each category over time for the underlying trend
+# dimensions are prob.FSI.cat[year, species.num, category]
+prob.FSI.cat <- results$BUGSoutput$mean$prob.FSI.cat.trend
+prob.FSI.cat[1,1,]
+plotdata <- data.frame(prob=matrix(prob.FSI.cat,ncol=1))
+plotdata$Year.num    <- rep(1:nrow(year.code))
+plotdata$Species.num <- rep(1:nrow(species.code), each=nrow(year.code))
+plotdata$FSI.num.cat <- rep(1:length(unique(FSI.threshold$FSI.num.cat)), each=nrow(species.code)*nrow(year.code))
+# convert the year, species, numeric code to actual year, species, and FSI category
+plotdata <- merge(plotdata, year.code,        all=TRUE)
+plotdata <- merge(plotdata, species.code, all=TRUE)
+plotdata <- merge(plotdata, FSI.threshold[,c("Species.Code","FSI.num.cat","FSI.cat")])
+plotdata
+prob.fsi.cat.trend <- plotdata
+
+
+# for stacked bar charts for each species
+# we need to sort the data frame in reverse order of FSI category
+plotdata <- plotdata[ order(plotdata$FSI.cat),] #, decreasing=TRUE),]
+plotdata$FSI.cat2 <- factor(plotdata$FSI.cat, levels=rev(levels(plotdata$FSI.cat)), order=TRUE)
+fsi.plot <- ggplot(data=plotdata, aes(x=Year, y=prob, fill=FSI.cat2))+
+  ggtitle("Probability of being in FSI category based on trend line")+
+  ylab("Cumulative probability of being in FSI category")+
+  geom_bar(stat="identity")+
+  scale_fill_brewer(palette="RdYlGn", direction =-1, name="FSI\nCategory")+
+  facet_wrap(~Species.Code, ncol=1)
+fsi.plot
+
+# Return the results and plots
+  list(species.code=species.code,
+       year.code=year.code,
+       site.code=site.code,
+       beta.table=beta.table,
+       meandata =meandata,
+       trenddata=trenddata,
+       postplot = postplot,
+       fsi.plot  = fsi.plot,
+       prob.fsi.cat.trend = prob.fsi.cat.trend,  # probability of being in each fsi category
+       results  = results  # all of the BUGs output
+       )
 }
 
 
@@ -329,12 +1499,10 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
 
 estimate.var.comp <- function(cpue){
    # How many years of data
-   cat("Estimating variance components for ", cpue$Watershed[1],cpue$Type[1], cpue$Measure[1], "\n")
+   #cat("Estimating variance components for ", cpue$Watershed[1],cpue$Type[1], cpue$Measure[1], "\n")
    nYears <- length(unique(cpue$Year))
    offset <- 0.5 *min( cpue$value[ cpue$value >0]) # add to avoid 0 counts
    
-   # scale the date to avoid convergence problems
-   cpue$Start.Date <- (as.numeric(cpue$Start.Date) - mean(as.numeric(cpue$Start.Date)))/sd(as.numeric(cpue$Start.Date))
    message=""
 
    # create factor as needed
@@ -349,6 +1517,7 @@ estimate.var.comp <- function(cpue){
    }
    # If two years of data, assume no trend between two years to 
    # estimate sampling and process sd
+   #browser()
    if(nYears == 2){
       #browser()
       if(length(unique(cpue$Location..)) < nrow(cpue)){  # some locations measured more than once}
@@ -371,10 +1540,10 @@ estimate.var.comp <- function(cpue){
    # If three or more years of data, fit a trend and extract the variance components
    if(nYears > 2){
       if(length(unique(cpue$Location..)) < nrow(cpue)){  # some locations measured more than once}
-         fit <- try(lme4::lmer(log(value+offset)~ Start.Date + (1|YearF)+(1|LocationF),data=cpue), silent=TRUE)
+         fit <- try(lme4::lmer(log(value+offset)~ Year + (1|YearF)+(1|LocationF),data=cpue), silent=TRUE)
       } 
       if(length(unique(cpue$Location..)) == nrow(cpue)){  # each location measured only once}
-         fit <- try(lme4::lmer(log(value+offset)~ Start.Date + (1|YearF),data=cpue), silent=TRUE)
+         fit <- try(lme4::lmer(log(value+offset)~ Year + (1|YearF),data=cpue), silent=TRUE)
       }  
       if(inherits(fit,'try-error') ){  # unable to fit. 
           message='unable to fit lmer'
@@ -387,8 +1556,6 @@ estimate.var.comp <- function(cpue){
          massge='nyears>2'
       }
    }
-   #browser()
-
    data.frame(SD.sampling=SD.sampling,
               SD.process =SD.process,
               message=message)
@@ -532,6 +1699,7 @@ estimate.power <- function(vc, alpha=0.05){
                            Measure=vc$Measure,
                            alpha=alpha)
   scenarios$Scenario <- 1:nrow(scenarios)
+  #browser()
   # estimate the power to detect a trend for each scenario
   power <- plyr::ddply(scenarios, "Scenario", function(x){
       # estimate compounded trend line on the log scale
@@ -546,23 +1714,5 @@ estimate.power <- function(vc, alpha=0.05){
       res <- cbind(res, x)
       res
    })
-   # make a plot
-   #browser()
-   plotdata <- power
-   plotdata$Years2 <- paste("Over ", plotdata$Year," Years",sep="")
-   plotdata$PerChangeF <- factor(plotdata$PerChange)
-   power.plot <- ggplot2::ggplot(data=plotdata, aes(x=sites.per.year, y=power.1sided.a, color=PerChangeF))+
-      ggtitle(paste("Power to detect changes over time for \n", vc$Watershed, " ",vc$Type,"  ", vc$Measure,"\n alpha=",power$alpha[1],
-                    "; rProcess SD= ", format(round(power$Process.SD[1] ,2),nsmall=2), 
-                    "; rSampling SD= ",format(round(power$Sampling.SD[1],2),nsmall=2), sep=""))+
-      geom_line(aes(group=PerChangeF, linetype=PerChangeF))+
-      ylab("Power")+ylim(0,1)+geom_hline(yintercept=0.80)+
-      facet_wrap(~Years2, ncol=1, scales='fixed')+
-      scale_color_discrete(name="Percent\nChange")+
-      scale_linetype_discrete(name="Percent\nChange")
-   plot(power.plot)
-   ggsave(plot=power.plot, file=paste('power-',vc$Watershed,"-",vc$Type,"-",vc$Measure,"-rProcessSD-",
-                                      format(round(power$Process.SD[1],2),nsmall=2),".png",sep=""),
-           h=6, w=6, dpi=300)
-   power
+  power
   }

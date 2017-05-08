@@ -1,0 +1,171 @@
+### `r species.select`
+
+```{r  echo=FALSE, message=FALSE, warning=FALSE }
+# Comput the summary statstics for each species by year
+cpue.select <- cpue[ cpue$Species.Code == species.select,]
+
+fish.stat <- plyr::ddply(cpue.select, c("Species.Code","Year"), plyr::summarize,
+                   nfish = length(Fork.Length..mm.),
+                   fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
+                   fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
+                   fl.max= round(max(Fork.Length..mm. , na.rm=TRUE)))
+fish.stat$fl.mean[ is.nan(fish.stat$fl.mean)    ] <- NA
+fish.stat$fl.min [ is.infinite(fish.stat$fl.min)] <- NA
+fish.stat$fl.max [ is.infinite(fish.stat$fl.max)] <- NA
+
+# Sort by year and then by species
+fish.stat <- fish.stat[ order(fish.stat$Year),]
+```
+
+The  mean fork length and size range for this species on a yearly basis are summarized in 
+Table~\ref`r paste("tab:fishsummary",species.select,sep="")` 
+and plotted in 
+Figure~\ref`r paste("fig:fishsummary",species.select,sep="")`.
+
+\begin{table}[h]
+\centering
+\captionsetup{width=.9\linewidth}
+\caption{Summary statistics on fork length `r species.select` captured in `r cpue$WatershedName[1]`.}
+\label{`r paste("tab:fishsummary",species.select,sep="")`}
+\begin{tabular}{| l | r r r r | } \hline
+           &           &  Mean   &  Min     & Max     \\
+           &           &  fork   &  fork    & fork    \\
+Year       &   n       &  length &  length  & length  \\
+           &           & mm      &  mm      &  mm     \\ \hline
+```{r  echo=FALSE, results="asis" }
+for(i in 1:nrow(fish.stat)){
+   temp <- paste(fish.stat[i,"Year"], 
+                 " & ", fish.stat[i,"nfish"], 
+                 " & ", fish.stat[i,"fl.mean"], 
+                 " & ", fish.stat[i,"fl.min"], 
+                 " & ", fish.stat[i,"fl.max"], 
+                 "\\\\ \n")
+   cat(temp)
+}
+cat("\\hline \n")
+```
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\begin{center}
+```{r   echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+# Create a plot of the change in fork length over all of the years
+
+# Melt the data
+sumstat.melt <- reshape2::melt(fish.stat,
+                        id.var=c("Species.Code","Year"),
+                        measure.var=c("fl.mean","fl.min","fl.max"),
+                        variable.name="Measure",
+                        value.name="Length")
+sumstat.melt$Measure <- car::recode(sumstat.melt$Measure,
+                            " 'fl.mean'='Mean'; 'fl.max'='Max'; 'fl.min'='Min' " )
+
+sumstatplot <- ggplot2::ggplot(data=sumstat.melt, aes(x=Year, y=Length, color=Measure))+
+   ggtitle(paste('Trends in fork length for ', sumstat.melt$Species.Code[1]))+
+   geom_point()+
+   geom_line()+
+   xlab("Year")+ylab("Length (mm)")
+sumstatplot
+```
+\end{center}
+\caption{`r paste("Changes in fork length for ", species.select,' on ', cpue.select$WatershedName[1],sep="")`
+\label{`r paste("fig:fishsummary",species.select,sep="")`
+\end{figure}
+
+
+
+The length distribution over all years is shown in Figure~\ref`r paste("fig:ldist",species.select,sep="")`.
+Black vertical line indicates estimated length at 50\% maturity (153 mm Fork Length).
+{\Large Not yet shown --How is this known from the data? }
+
+
+\begin{figure}[h]
+\begin{center}
+```{r   echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+# Create a plot of the distribution of fork length over all of the years
+lengthdist <- ggplot2::ggplot(data=cpue.select, aes(x=Fork.Length..mm., y=..density..))+
+   ggtitle(paste("Fork length distribution for ", species.select,' on ', cpue.select$WatershedName[1],sep=""))+
+   geom_histogram(alpha=0.2)+ 
+   geom_density()+
+   xlab("Fork length (mm)")+ylab("Density")
+lengthdist
+```
+\end{center}
+\caption{`r paste("Fork length distribution for ", species.select,' on ', cpue.select$WatershedName[1],sep="")`
+\label{`r paste("fig:ldist",species.select,sep="")`
+\end{figure}
+
+
+A plot of the CPUE over time is shown in Figure~\ref{`r paste("fig:rawtrend",species.select,sep="")`.
+
+\begin{figure}[h]
+\begin{center}
+```{r   echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+source("FSI.threshold.R")  # get the threshold data
+catch.summary.select <- catch.summary[ catch.summary$Species.Code == species.select,]
+
+raw.trend <- ggplot2::ggplot(data=catch.summary.select, aes(x=Year, y=CPUE.300m))+
+   ggtitle(paste("CPUE data for ", catch.summary.select$Species.Code[1], 
+                 " at ", catch.summary.select$WatershedName[1], " with FSI categories",sep=""))+
+   geom_point()+
+   geom_line(aes(group=LocationTTM))+
+   geom_hline(data=FSI.threshold[FSI.threshold$Species.Code == catch.summary.select$Species.Code[1],], 
+              aes(yintercept=lower), alpha=0.5)+
+   geom_text(data=FSI.threshold[FSI.threshold$Species.Code == catch.summary.select$Species.Code[1],], aes(x=-Inf, y=lower),
+              label=FSI.threshold[FSI.threshold$Species.Code == catch.summary.select$Species.Code[1],]$FSI.cat,
+              hjust="left", vjust="bottom", color="red")+
+   ylab("CPUE (fish/300 m)")+
+   xlab("Year\nLines join Locations over time")
+raw.trend
+```
+\end{center}
+\caption{`r paste("Raw data for ", catch.summary.select$Species.Code[1], 
+                " at ", catch.summary.select$WatershedName[1], " with FSI categories",sep="")`
+\label{`r paste("fig:rawtrend",species.select,sep="")`
+\end{figure}
+
+
+```{r  echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+# Fit the Bayesian trend model
+source("BayesianTrendFSI.R")
+fsi.res <- BayesianTrendFSI(catch.summary.select, FSI.threshold)
+
+slope <- paste(sprintf("%5.2f", 100*fsi.res$beta.table["slope"]),"\\%",sep="")
+SD    <- paste(sprintf("%5.2f", 100*fsi.res$beta.table["sd"])   ,"\\%",sep="")
+p.pos <- paste(sprintf("%5.2f", 1-fsi.res$beta.table["p.slope.lt.0"]))
+
+```
+
+The Bayesian analysis on trend found that the median CPUE was changing at 
+`r slope` (SD `r SD`) per year
+and the posterior probability that the slope is positive is `r p.pos`.
+
+Plots of the posterior distribution of the trend line for the median and the FSI Category membership are shown in 
+Figure~\ref{`r paste("fig:postplot",species.select,sep="")` and
+Figure~\ref{`r paste("fig:fsiplot",species.select,sep="")`.
+
+\begin{figure}[h]
+\begin{center}
+```{r   echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+fsi.res$postplot+ylim(c(0,150))
+```
+\end{center}
+\caption{`r paste("Posterior plot of trend in medain ", catch.summary.select$Species.Code[1], 
+                " at ", catch.summary.select$WatershedName[1],sep="")`
+\label{`r paste("fig:postplot",species.select,sep="")`
+\end{figure}
+
+\begin{figure}[h]
+\begin{center}
+```{r   echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+fsi.res$fsi.plot
+```
+\end{center}
+\caption{`r paste("Posterior probability of membership in FSI category for  ", 
+                 catch.summary.select$Species.Code[1], 
+                " at ", catch.summary.select$WatershedName[1],sep="")`
+\label{`r paste("fig:fsiplot",species.select,sep="")`
+\end{figure}
+
+

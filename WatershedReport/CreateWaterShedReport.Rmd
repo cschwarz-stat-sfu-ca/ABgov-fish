@@ -21,7 +21,7 @@ A draft watershed assessment report will be created in MSWord using data extract
 This draft report can then be edited by tweaking the R code (preferred) or tweaking the MSWord document (not preferred because your
 changes will be lost when you update the report by rerunning the _R_ code).
 
-This draft report is created using _R_ and _JAGS_  (a program that does Bayesian computatons)
+The draft report is created using _R_ and _JAGS_  (a program that does Bayesian computatons)
 to compute summary statistics, compute the probability of belonging to the FSI categories, 
 and make plots (using _ggplot2_). 
 _RMarkdown_ is used to mingle text and graphics and is rendered into a MSWord document.
@@ -53,6 +53,7 @@ Don't forget to install the additional _R_ packages listed under item (2) of the
     + _R2Jags_, _coda_, and _digest_ needed to run JAGS
 
 * _JAVA_. In order to read the FWIS files directly you will have to authorize _JAVA_ programs on your computer.
+If you are unable to authorize _JAVA_, you will need to save the FWIS files into a _csv_ format.
 
 
 ## Getting the FWIS data
@@ -61,6 +62,12 @@ Information on each watershed is extracted from the FWIS database. Contact ?????
 **The current extraction program creates Excel 95 files. 
 _R_ requires workbooks to be in Excel 97 or later format, so you will have to open and save
 the file as Excel 97 or later format.**
+
+It may be difficult to get _Java_ to work properly on many computers. For example, on Macintosh computers,
+the security settings are set high enough that _Java_ cannot be called from _R_ unless you are able
+to make deep modifications to system files. 
+
+Many people simply find it easier to to save the FWIS file as a _csv_ file and use that directly.
 
 
 ## Create a working directory to hold the data files and the draft template.
@@ -104,6 +111,9 @@ document (either _.xls_ or _.xlsx_ is fine).
 ```{r, out.height="2.5in",echo=FALSE, fig.align='center'}
 knitr::include_graphics(file.path("Figures","DataDirectory.png"))
 ```
+
+If you are unable to get _Java_ to work on your computer, open the FWIS data file and save the 'F&W' sheet as a _csv_file.
+You will have to modify the main template file as noted later.
 
 
 ### Duplicate and rename the main template file and the species template files.
@@ -193,7 +203,7 @@ occurs "behind the scenes."
 
 Creating the draft watershed reports will follow a multi-step process.
 
-1. Read in the data from the FWIS system (the workbook you copied to the _Data_ directory) and create some prelimnary tables
+1. Read in the data from the FWIS system (the workbook you copied to the _Data_ directory) and create some preliminary tables
 and plots to check the data, remove and outliers, or do any other pre-processing. This preprocessing is 'hidden' from the
 draft watershed assessment report, but the code used to pre-process the data is stored with the document. Consequently,
 when you update the assessment in a later year, the decisions made in pre-processing the data are evident.
@@ -249,8 +259,7 @@ There is no limit to the amount of text you can use.
 
 The text and code chunks can be intermixed at will.
 
-
-### Reading in the data and editing the data
+### Checking that _Java_ is configured properly.
 Return to the main template file (_QC-WatershedTemplate.Rmd_ for this example) in _RStudio_.
 
 The first chunk (labelled _setup_) is where we set up the _R_ code by opening the libraries needed for the analyses,
@@ -279,6 +288,18 @@ You will find it useful to send all output to the console window during the temp
 knitr::include_graphics(file.path("Figures","ChunkOutputConsole.png"))
 ```
 
+Select the _R_ code fragment
+```{r echo=TRUE, eval=FALSE}
+library(xlsx)
+```
+and run it. If the _xlsx_ package loads without error, then _Java_ has been configured properly. 
+
+If the _xlsx_ package does NOT load properly, then comment out the line so it looks like:
+```{r echo=TRUE, eval=FALSE}
+#library(xlsx)  # comment out this line if Java does not work properly
+```
+
+
 #### Select which species you want to report on.
 About 20 lines down the first chunk, you will see the code fragment:
 
@@ -296,7 +317,7 @@ In this case, we will leave the defaults as is. Notice the _R_ comment indicator
 fragment implies that this line is ignored.
 
 #### Specifying the file name of the FWIS workbook.
-The next code fragment is where the file name of the FWIS workbook is specified along with the sheetname containing the data.
+The next code fragment is where the workbook name of the FWIS workbook is specified along with the sheetname containing the data.
 
 ```{r echo=TRUE, eval=FALSE}
 workbookName = file.path('Data','Quirk Creek.xls')  
@@ -305,8 +326,18 @@ sheetName    = 'F&W'
 
 Here the workbook is located in the _Data_ subdirectory in the current working directory. The sheetname is "F&W".
 
-#### Read in the data
-The next code fragment checks that the file exists and then calls a function to read the FWIS workbook.
+If _Java_ is not working, you will need to save the 'F&W' sheet as a _csv_ file using Excel. Then specify the file 
+name as:
+```{r echo=TRUE, eval=FALSE}
+csvfilename = file.path('Data','Quirk Creek.csv')  # notice the csv suffix on the final file name 
+```
+
+
+
+
+#### Read in the data (_JAVA_ working)
+Choose either this  code fragment if _Java_ is working or the next code fragement.
+This code fragment checks that the workbook exists and then calls a function to read the FWIS workbook.
 
 ```{r echo=TRUE, eval=FALSE}
 if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found ')) 
@@ -317,6 +348,23 @@ cpue <- read.FWIS.workbook(
         sheetName     =sheetName,   
         target.species=target.species)   
 ```
+
+#### Read in the data (_JAVA_ NOT working)
+If you have saved the data as a _csv_ file, use these code fragments.
+This fragment checks that the _csv_ file exists and then calls a function to read the FWIS workbook.
+
+```{r echo=TRUE, eval=FALSE}
+if(!file.exists(csvfilename))stop(paste("File ",csvfilename,' not found ')) 
+
+# read the sheet from the workbook   
+cpue <- read.FWIS.workbook.csv(    # notice the suffix on the function call
+        csvfilename,   
+        sheetName     =sheetName,   
+        target.species=target.species)   
+```
+
+
+
 
 Highlight and run all of the code block from the start to the end of the fragment above.
 ```{r setup, include=FALSE}
@@ -357,7 +405,7 @@ library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
-library(xlsx)
+#library(xlsx)  # This requires JAVA to work properly
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
@@ -379,23 +427,36 @@ target.species <- 'ALL'
 
 workbookName = 'Data/Wampus Creek.xls'
 sheetName    = 'F&W'
+csvfilename  = file.path("Data","Wampus Creek.csv")
 
 workbookName = 'Data/Freeman HUC8.xls'
 sheetName    = 'F&W 2008 & 2015 '
+csvfilename  = file.path("Data", "Freeman HUC8.csv")
 
 workbookName = 'Data/Quirk Creek.xls'
 sheetName    = 'F&W'
+csvfilename  = file.path("Data","Quirk Creek.csv")
 
+
+# CHoose one of the following code fragments, depending if JAVA is working or not.
+#  If xlxs package is working
 # Check that  FWIS files exists
-if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
-```
-If the read is successful, you should get some information lines in the console:
-```{r   echo=FALSE}
-# read the sheet from the woorkbook
-cpue <- read.FWIS.workbook(
-        workbookName  =workbookName,
-        sheetName     =sheetName,
+#if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+
+# read the sheet from the workbook
+#cpue <- read.FWIS.workbook(
+#        workbookName  =workbookName,
+#        sheetName     =sheetName,
+#        target.species=target.species)
+
+# Otherwise read using csv
+# Check that  FWIS files exists
+if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+
+cpue <- read.FWIS.workbook.csv(
+        csvfilename,
         target.species=target.species)
+
 ```
 
 #### Check and edit the data

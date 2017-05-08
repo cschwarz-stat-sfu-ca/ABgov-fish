@@ -177,6 +177,181 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
    
    fish}
 
+# In case you can't get JAVA to work. save the sheet as a CSV file and use the
+# following function.
+read.FWIS.workbook.csv<- function(
+        csvfile,
+        target.species='ALL', # what target species to select
+        select.equipment='Backpack',            # what equipment to select
+        select.data     ='measure'             # what data to include ("count" and "measure" are two possibilities)
+        ){
+
+load <- require(plyr)
+if(!load)stop("unable to load plyr package")
+
+# Read the reaw data from the FWMIS workbooks.
+# Input parameters are
+#      workbookName   - name of workbook with FWIS information
+#      wateshedName   - name of the Watershed represented by the FWIS workbook
+#      sheetName      - name of the sheed with the CPUE data
+#      target.species - vector of species codes for which the CPUE is to be extracted
+#      select.equipment-vector of equipment codes (lowercase) for which the CPUE is to be extracted
+#      select.data     -which CPUE data sould be included. "measure" (measured fish only), 
+#                                                          "count",  (counted fish only) or 
+#                                                       c("measure","count") (both types of data)
+#
+# Ouput 
+#   List with elements
+#      cpue - the CPUE data
+#      excluded.data - data the was excluded from the cpue. This should be checked for problem such as
+#                      misspelling of the equipment name etc
+#
+
+# What are the valid species codes?
+valid.species.codes.csv <- textConnection(
+"Species.Code  ,  Species.Common.Name  ,  Scientific.Name  ,  Species.Code2
+AFJW  ,  AFRICAN JEWELFISH  ,  HEMICHROMIS BIMACULATUS  ,  AFJW
+ARCH  ,  ARCTIC CHAR  ,  SALVELINUS ALPINUS  ,  ARCH
+ARGR  ,  ARCTIC GRAYLING  ,  THYMALLUS ARCTICUS  ,  ARGR
+AGMN  ,  ARCTIC GRAYLING (BELLY POPLN)  ,  THYMALLUS ARCTICUS MONTANUS  ,  AGMN
+ARLM  ,  ARCTIC LAMPREY  ,  LAMPETRA JAPONICA  ,  ARLM
+BSSN  ,  BANFF SPRINGS SNAIL  ,  PHYSELLA JOHNSONI  ,  BSSN
+BRMN  ,  BRASSY MINNOW  ,  HYBOGNATHUS HANKINSONI  ,  BRMN
+BRST  ,  BROOK STICKLEBACK  ,  CULAEA INCONSTANS  ,  BRST
+BKTR  ,  BROOK TROUT  ,  SALVELINUS FONTINALIS  ,  BKTR
+BNTR  ,  BROWN TROUT  ,  SALMO TRUTTA  ,  BNTR
+BLTR  ,  BULL TROUT  ,  SALVELINUS CONFLUENTUS  ,  BLTR
+BLBK  ,  BULL TROUT X BROOK TROUT HYBRID  ,  SALVELINUS CONFLUENTUS X SALVELINUS FONTINALIS  ,  BLBK
+BURB  ,  BURBOT  ,  LOTA LOTA  ,  BURB
+CCHL  ,  CICHLID  ,  PSEUDOTROPHEUS  ,  CCHL
+CHSL  ,  COHO SALMON  ,  ONCORHYNCHUS KISUTCH  ,  CHSL
+CTTR  ,  CUTTHROAT TROUT  ,  ONCORHYNCHUS CLARKI  ,  CTTR
+CRTR  ,  CUTTHROAT TROUT X RAINBOW TROUT  ,  ONCORHYNCHUS CLARKI X ONCORHYNCHUS MYKISS  ,  CRTR
+DPSC  ,  DEEPWATER SCULPIN  ,  MYOXOCEPHALUS THOMPSONI  ,  DPSC
+DLVR  ,  DOLLY VARDEN  ,  SALVELINUS MALMA  ,  DLVR
+EMSH  ,  EMERALD SHINER  ,  NOTROPIS ATHERINOIDES  ,  EMSH
+FTMN  ,  FATHEAD MINNOW  ,  PIMEPHALES PROMELAS  ,  FTMN
+FNDC  ,  FINESCALE DACE  ,  PHOXINUS NEOGAEUS  ,  FNDC
+FLCH  ,  FLATHEAD CHUB  ,  PLATYGOBIO GRACILIS  ,  FLCH
+GLTR  ,  GOLDEN TROUT  ,  ONCORHYNCHUS AQUABONITA  ,  GLTR
+GOLD  ,  GOLDEYE  ,  HIODON ALOSOIDES  ,  GOLD
+GOFS  ,  GOLDFISH  ,  CARASSIUS AURATUS  ,  GOFS
+IWDR  ,  IOWA DARTER  ,  ETHEOSTOMA EXILE  ,  IWDR
+KOKA  ,  KOKANEE  ,  ONCORHYNCHUS NERKA  ,  KOKA
+LKCH  ,  LAKE CHUB  ,  COUESIUS PLUMBEUS  ,  LKCH
+LKST  ,  LAKE STURGEON  ,  ACIPENSER FULVESCENS  ,  LKST
+LKTR  ,  LAKE TROUT  ,  SALVELINUS NAMAYCUSH  ,  LKTR
+LKWH  ,  LAKE WHITEFISH  ,  COREGONUS CLUPEAFORMIS  ,  LKWH
+LRSC  ,  LARGESCALE SUCKER  ,  CATOSTOMUS MACROCHEILUS  ,  LRSC
+LGPR  ,  LOGPERCH  ,  PERCINA CAPRODES  ,  LGPR
+LNDC  ,  LONGNOSE DACE  ,  RHINICHTHYS CATARACTAE  ,  LNDC
+LNSC  ,  LONGNOSE SUCKER  ,  CATOSTOMUS CATOSTOMUS  ,  LNSC
+LOTS  ,  LONGTAIL TADPOLE SHRIMP  ,  TRIOPS LONGICAUDATUS  ,  LOTS
+MOON  ,  MOONEYE  ,  HIODON TERGISUS  ,  MOON
+MNSC  ,  MOUNTAIN SUCKER  ,  CATOSTOMUS PLATYRHYNCHUS  ,  MNSC
+MNWH  ,  MOUNTAIN WHITEFISH  ,  PROSOPIUM WILLIAMSONI  ,  MNWH
+NNST  ,  NINESPINE STICKLEBACK  ,  PUNGITIUS PUNGITIUS  ,  NNST
+NOCY  ,  NORTHERN CRAYFISH  ,  ORCONECTES VIRILIS  ,  NOCY
+NRPK  ,  NORTHERN PIKE  ,  ESOX LUCIUS  ,  NRPK
+NRSQ  ,  NORTHERN PIKEMINNOW  ,  PTYCHOCHEILUS OREGONENSIS  ,  NRSQ
+NRDC  ,  NORTHERN REDBELLY DACE  ,  PHOXINUS EOS  ,  NRDC
+PMCH  ,  PEAMOUTH CHUB  ,  MYLCHEILUS CAURINUS  ,  PMCH
+PRDC  ,  PEARL DACE  ,  MARGARISCUS MARGARITA  ,  PRDC
+PRSC  ,  PRICKLY SCULPIN  ,  COTTUS ASPER  ,  PRSC
+PGWH  ,  PYGMY WHITEFISH  ,  PROSOPIUM COULTERI  ,  PGWH
+QUIL  ,  QUILLBACK  ,  CARPIODES CYPRINUS  ,  QUIL
+RNTR  ,  RAINBOW TROUT  ,  ONCORHYNCHUS MYKISS  ,  RNTR
+RDSH  ,  REDSIDE SHINER  ,  RICHARDSONIUS BALTEATUS  ,  RDSH
+RVSH  ,  RIVER SHINER  ,  NOTROPIS BLENNIUS  ,  RVSH
+RNWH  ,  ROUND WHITEFISH  ,  PROSOPIUM CYLINDRACEUM  ,  RNWH
+SLML  ,  SAILFIN MOLLY  ,  POECILIA LATIPINNA  ,  SLML
+SAUG  ,  SAUGER  ,  STIZOSTEDION CANADENSE  ,  SAUG
+SHRD  ,  SHORTHEAD REDHORSE  ,  MOXOSTOMA MACROLEPIDOTUM  ,  SHRD
+SHCS  ,  SHORTJAW CISCO  ,  COREGONUS ZENITHICUS  ,  SHCS
+SLRD  ,  SILVER REDHORSE  ,  MOXOSTOMA ANISURUM  ,  SLRD
+SLSC  ,  SLIMY SCULPIN  ,  COTTUS COGNATUS  ,  SLSC
+SMBS  ,  SMALLMOUTH BASS  ,  MICROPTERUS DOLOMIEU  ,  SMBS
+SPLA  ,  SPLAKE  ,  SALVELINUS NAMAYCUSH X SALVELINUS FONTINALIS  ,  SPLA
+SPSC  ,  SPOONHEAD SCULPIN  ,  COTTUS RICEI  ,  SPSC
+SPSH  ,  SPOTTAIL SHINER  ,  NOTROPIS HUDSONIUS  ,  SPSH
+SMSC  ,  ST. MARY SCULPIN  ,  COTTUS BAIRDII PUNCTULATUS  ,  SMSC
+STON  ,  STONECAT  ,  NOTURUS FLAVUS  ,  STON
+THST  ,  THREESPINE STICKLEBACK  ,  GASTEROSTEUS ACULEATUS  ,  THST
+TRPR  ,  TROUT-PERCH  ,  PERCOPSIS OMISCOMAYCUS  ,  TRPR
+CISC  ,  TULLIBEE (CISCO)  ,  COREGONUS ARTEDI  ,  CISC
+TLWH  ,  TULLIBEE (CISCO) X LAKE WHITEFISH  ,  COREGONUS ARTEDI X COREGONUS CLUPEAFORMIS  ,  TLWH
+WALL  ,  WALLEYE  ,  SANDER VITREUS  ,  WALL
+WEMO  ,  WESTERN MOSQUITOFISH  ,  GAMBUSIA AFFINIS  ,  WEMO
+WSMN  ,  WESTERN SILVERY MINNOW  ,  HYBOGNATHUS ARGYRITIS  ,  WSMN
+WHSC  ,  WHITE SUCKER  ,  CATOSTOMUS COMMERSONI  ,  WHSC
+YLPR  ,  YELLOW PERCH  ,  PERCA FLAVESCENS  ,  YLPR")
+
+valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE, strip.white=TRUE)
+
+# Argument checking
+    if(!file.exists(csvfile))stop("csv file not found", call.=TRUE)
+
+    # check that target species are ok
+    if(!all(toupper(target.species) %in% toupper(c(valid.species.codes$Species.Code, 'ALL'))))
+        stop(paste('at least one species code is not valid:', target.species, collapse=""))
+    if('ALL' %in% toupper(target.species))target.species<- toupper(valid.species.codes$Species.Code)
+     
+    if(!all(tolower(select.equipment) %in% tolower(c("Backpack","Float"))))stop("invalid value for select.equipment")
+    if(!all(tolower(select.data) %in% c("measure","count")))stop("invalid value for select.data")
+    select.data <- tolower(select.data)
+    
+    
+    
+  
+#  get the raw data
+   cat("\n\n\n*** Starting to read data from ", workbookName,  "***** \n")
+   cat(      "    Worksheet ", sheetName, "\n")
+
+   fish <- read.csv(csvfile, header=TRUE, as.is=TRUE, strip.white=TRUE)
+   cat("total rows read ", dim(fish), "\n")
+
+
+   # do some data checking
+   if(length(unique(fish$Waterbody.Offical.Name))>1)stop("More than one waterbody name present")
+
+   
+   # convert ActivityDate to R date format- Date returned in Excel date values 
+   fish$Activity.Date <- as.Date(fish$Activity.Date, "%d-%b-%y")
+   fish$Year          <- as.numeric(format(fish$Activity.Date, "%Y"))
+  
+   # convert TTM.Easting and TTM.Northing to numeric values
+   fish$TTM.Easting  <- as.numeric(fish$TTM.Easting)
+   fish$TTM.Northing <- as.numeric(fish$TTM.Northing)
+   fish$Longitude    <- as.numeric(fish$Longitude)
+   fish$Latitude     <- as.numeric(fish$Latitude)
+ 
+   # create LocationTTM based on Easting/Northing values
+   # at the moment, no checking for locations that are "close"
+   
+   fish$LocationTTM <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   
+   # create Watershed Name using proper case
+   if(!'Waterbody.Official.Name' %in% names(fish))stop("Missing Waterbody Official Name")
+   fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   
+   # convert forklength and weight to numeric
+   fish$"Fork.Length..mm." <- as.numeric(fish$"Fork.Length..mm.")
+   fish$"Weight..g."       <- as.numeric(fish$"Weight..g.")
+   
+   # convert Distance and time to numeric
+   fish$Distance..m.       <- as.numeric(fish$Distance..m.)
+   fish$Time..s.           <- as.numeric(fish$Time..s)
+   
+   # convert count to numeric
+   fish$Total.Count.of.Species.by.SurveyID <- as.numeric(fish$Total.Count.of.Species.by.SurveyID)
+   
+   fish}
+
+
+
+
+#--------------------------------------------------------------------
+
 
 # Convert to Proper Case (see help from toupper)
 toProperCase <- function(x) {
@@ -1324,12 +1499,12 @@ fsi.plot
 
 estimate.var.comp <- function(cpue){
    # How many years of data
-   cat("Estimating variance components for ", cpue$Watershed[1],cpue$Type[1], cpue$Measure[1], "\n")
+   #cat("Estimating variance components for ", cpue$Watershed[1],cpue$Type[1], cpue$Measure[1], "\n")
    nYears <- length(unique(cpue$Year))
    offset <- 0.5 *min( cpue$value[ cpue$value >0]) # add to avoid 0 counts
    
    message=""
-
+   #browser()
    # create factor as needed
    cpue$YearF     <- factor(cpue$Year)
    cpue$LocationF <- factor(cpue$Location..)
@@ -1365,10 +1540,10 @@ estimate.var.comp <- function(cpue){
    # If three or more years of data, fit a trend and extract the variance components
    if(nYears > 2){
       if(length(unique(cpue$Location..)) < nrow(cpue)){  # some locations measured more than once}
-         fit <- try(lme4::lmer(log(value+offset)~ Start.Date + (1|YearF)+(1|LocationF),data=cpue), silent=TRUE)
+         fit <- try(lme4::lmer(log(value+offset)~ Year + (1|YearF)+(1|LocationF),data=cpue), silent=TRUE)
       } 
       if(length(unique(cpue$Location..)) == nrow(cpue)){  # each location measured only once}
-         fit <- try(lme4::lmer(log(value+offset)~ Start.Date + (1|YearF),data=cpue), silent=TRUE)
+         fit <- try(lme4::lmer(log(value+offset)~ Year + (1|YearF),data=cpue), silent=TRUE)
       }  
       if(inherits(fit,'try-error') ){  # unable to fit. 
           message='unable to fit lmer'
