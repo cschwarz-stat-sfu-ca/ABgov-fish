@@ -41,19 +41,19 @@ in item (6) of the installation instructions in the above link. You will also ne
     + _stringr_ specialized functions for text processing
     + _R2Jags_, _coda_, _digest_ needed to run JAGS
     +  _pander_  needed to create tables in _RMarkdown_ 
-    + _ggmaps_ needed to extract Google maps over the web. You will needs the most recent version which has NOT yet been released 
-      to CRAN. You need to install it using 
-        - devtools::install_github("dkahle/ggmap") 
-     on the R console. This may require the _devtools_ package to also be installed.
+    + _ggmaps_ needed to extract Google maps over the web. You should install this from CRAN so that
+      all package dependencies are also load. Then you also need  the most recent version which has NOT yet been released 
+      to CRAN. You need to install it using   
+        - `devtools::install_github('dkahle/ggmap')`   
+     on the R console. This may require the _devtools_ package to also be installed. So, install the OLD version
+     of _ggmaps_ from CRAN (to get the dependent packages) and then install the most recent version from GitHub to overwrite
+     the older version. 
 
 * _RStudio_. An integrated development environment that controls _R_ and its output.
 
 * _JAGS_ (Just Another Gibbs Sampler). A cross-platform program that performs Bayesian computations. This program will be called by _R_.
 Don't forget to install the additional _R_ packages listed under item (2) of the _JAGS_ installation instructions in the above link namely:
     + _R2Jags_, _coda_, and _digest_ needed to run JAGS
-
-* _JAVA_. In order to read the FWIS files directly you will have to authorize _JAVA_ programs on your computer.
-If you are unable to authorize _JAVA_, you will need to save the FWIS files into a _csv_ format.
 
 
 ## Getting the FWIS data
@@ -62,10 +62,6 @@ Information on each watershed is extracted from the FWIS database. Contact ?????
 **The current extraction program creates Excel 95 files. 
 _R_ requires workbooks to be in Excel 97 or later format, so you will have to open and save
 the file as Excel 97 or later format.**
-
-It may be difficult to get _Java_ to work properly on many computers. For example, on Macintosh computers,
-the security settings are set high enough that _Java_ cannot be called from _R_ unless you are able
-to make deep modifications to system files. 
 
 Many people simply find it easier to to save the FWIS file as a _csv_ file and use that directly.
 
@@ -112,7 +108,7 @@ document (either _.xls_ or _.xlsx_ is fine).
 knitr::include_graphics(file.path("Figures","DataDirectory.png"))
 ```
 
-If you are unable to get _Java_ to work on your computer, open the FWIS data file and save the 'F&W' sheet as a _csv_file.
+If you are unable to read the Excel workbook properly, open the FWIS data file and save the 'F&W' sheet as a _csv_file.
 You will have to modify the main template file as noted later.
 
 
@@ -259,7 +255,7 @@ There is no limit to the amount of text you can use.
 
 The text and code chunks can be intermixed at will.
 
-### Checking that _Java_ is configured properly.
+### Loading libraries.
 Return to the main template file (_QC-WatershedTemplate.Rmd_ for this example) in _RStudio_.
 
 The first chunk (labelled _setup_) is where we set up the _R_ code by opening the libraries needed for the analyses,
@@ -286,17 +282,6 @@ You will find it useful to send all output to the console window during the temp
 
 ```{r, out.height="2in",echo=FALSE, fig.align='center'}
 knitr::include_graphics(file.path("Figures","ChunkOutputConsole.png"))
-```
-
-Select the _R_ code fragment
-```{r echo=TRUE, eval=FALSE}
-library(xlsx)
-```
-and run it. If the _xlsx_ package loads without error, then _Java_ has been configured properly. 
-
-If the _xlsx_ package does NOT load properly, then comment out the line so it looks like:
-```{r echo=TRUE, eval=FALSE}
-#library(xlsx)  # comment out this line if Java does not work properly
 ```
 
 
@@ -326,7 +311,7 @@ sheetName    = 'F&W'
 
 Here the workbook is located in the _Data_ subdirectory in the current working directory. The sheetname is "F&W".
 
-If _Java_ is not working, you will need to save the 'F&W' sheet as a _csv_ file using Excel. Then specify the file 
+If you trouble reading the Excel workbook, you will need to save the 'F&W' sheet as a _csv_ file using Excel. Then specify the file 
 name as:
 ```{r echo=TRUE, eval=FALSE}
 csvfilename = file.path('Data','Quirk Creek.csv')  # notice the csv suffix on the final file name 
@@ -335,8 +320,9 @@ csvfilename = file.path('Data','Quirk Creek.csv')  # notice the csv suffix on th
 
 
 
-#### Read in the data (_JAVA_ working)
-Choose either this  code fragment if _Java_ is working or the next code fragement.
+#### Read in the data directly from Excel
+Choose either this  code fragment if reading Excel workbooks is working or the next code fragement
+if it is not.
 This code fragment checks that the workbook exists and then calls a function to read the FWIS workbook.
 
 ```{r echo=TRUE, eval=FALSE}
@@ -349,7 +335,7 @@ cpue <- read.FWIS.workbook(
         target.species=target.species)   
 ```
 
-#### Read in the data (_JAVA_ NOT working)
+#### Read in the data (from a _csv_ file)
 If you have saved the data as a _csv_ file, use these code fragments.
 This fragment checks that the _csv_ file exists and then calls a function to read the FWIS workbook.
 
@@ -401,11 +387,11 @@ library(knitr)
 library(lmerTest)
 library(pander)
 library(plyr)
+library(readxl)
 library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
-#library(xlsx)  # This requires JAVA to work properly
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
@@ -438,8 +424,7 @@ sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 
 
-# CHoose one of the following code fragments, depending if JAVA is working or not.
-#  If xlxs package is working
+# CHoose one of the following code fragments, depending if reading Excel workbooks is working or not.
 # Check that  FWIS files exists
 #if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 

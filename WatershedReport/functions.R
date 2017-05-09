@@ -7,8 +7,6 @@ read.FWIS.workbook<- function(
         select.data     ='measure'             # what data to include ("count" and "measure" are two possibilities)
         ){
 
-load <- require(xlsx)
-if(!load)stop("unable to load xlsx package")
 load <- require(plyr)
 if(!load)stop("unable to load plyr package")
 
@@ -113,9 +111,9 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
 
 # Argument checking
     if(!file.exists(workbookName))stop("workbookName not found", call.=TRUE)
-    wb <- xlsx::loadWorkbook(workbookName)
-    sheets <- xlsx::getSheets(wb)
-    if(!sheetName %in% names(sheets))stop(paste("sheetName ",sheetName," not found in workbook"), call.=TRUE)
+
+    sheets <- readxl::excel_sheets(workbookName)
+    if(!sheetName %in% sheets)stop(paste("sheetName ",sheetName," not found in workbook"), call.=TRUE)
     
     # check that target species are ok
     if(!all(toupper(target.species) %in% toupper(c(valid.species.codes$Species.Code, 'ALL'))))
@@ -126,18 +124,13 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
     if(!all(tolower(select.data) %in% c("measure","count")))stop("invalid value for select.data")
     select.data <- tolower(select.data)
     
-    
-    
   
 #  get the raw data
    cat("\n\n\n*** Starting to read data from ", workbookName,  "***** \n")
    cat(      "    Worksheet ", sheetName, "\n")
 
-   fish <- xlsx::read.xlsx2(
-                 file        =workbookName,
-                 sheetName   =sheetName,
-                 colClasses='character',  # read all as character 
-                 stringsAsFactors=FALSE)
+   fish <- readxl::read_excel(workbookName, sheet=sheetName)
+   colnames(fish) <- make.names(colnames(fish))
    cat("total rows read ", dim(fish), "\n")
 
 
@@ -146,7 +139,8 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
 
    
    # convert ActivityDate to R date format- Date returned in Excel date values 
-   fish$Activity.Date <- as.Date(as.numeric(fish$Activity.Date), origin=as.Date('1900-01-01')-2)
+#  fish$Activity.Date <- as.Date(as.numeric(fish$Activity.Date), origin=as.Date('1900-01-01')-2)
+   fish$Activity.Date <- as.Date(fish$Activity.Date)
    fish$Year          <- as.numeric(format(fish$Activity.Date, "%Y"))
   
    # convert TTM.Easting and TTM.Northing to numeric values
@@ -170,7 +164,7 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
    
    # convert Distance and time to numeric
    fish$Distance..m.       <- as.numeric(fish$Distance..m.)
-   fish$Time..s.           <- as.numeric(fish$Time..s)
+   fish$Time..s.           <- as.numeric(fish$Time..s.)
    
    # convert count to numeric
    fish$Total.Count.of.Species.by.SurveyID <- as.numeric(fish$Total.Count.of.Species.by.SurveyID)

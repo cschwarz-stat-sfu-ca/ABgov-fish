@@ -1,0 +1,207 @@
+---
+title: "Example of Bayesian Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Fit a bayesian model to estimate p(being in each risk category) and credible intervals
+# without any trend in the study for a single year and a single species
+# This uses simulated data to illustrate the impact of changes in the mean
+
+
+# Open the libraries used in this analysis
+library(ggplot2)
+library(coda)
+library(pander)
+library(plyr)
+library(R2jags)  # used for call to JAGS
+library(reshape2)
+
+# define table and figure numbering
+# Keep track of figure and table numbers. Do not modify the global variables .FIGNUM and .TABNUM
+getFIGNUM <- function(){
+    .FIGNUM <<- .FIGNUM +1
+    .FIGNUM
+}
+
+getTABNUM <- function(){
+  .TABNUM <<- .TABNUM +1
+  .TABNUM
+}
+
+.FIGNUM <- 0
+.TABNUM <- 0
+
+
+
+
+# Get the FSI category boundaries
+# Read the FSI Thresholds
+FSI.threshold.csv<- textConnection(
+"Species.Code, FSI.num.cat, FSI.cat, lower, upper
+BKTR, 1, VHR,   0,   35
+BKTR, 2,  HR,  35,  90
+BKTR, 3,  MR,  90, 120
+BKTR, 4,  LR, 120, 170
+BKTR, 5, VLR, 170, 3000")
+
+FSI.threshold <- read.csv(FSI.threshold.csv, header=TRUE, as.is=TRUE, strip.white=TRUE)
+FSI.cat.unique <- unique(FSI.threshold[,c("FSI.num.cat","FSI.cat")])
+FSI.threshold$FSI.cat <- factor( FSI.threshold$FSI.cat, 
+                        levels= FSI.cat.unique$FSI.cat[order(FSI.cat.unique$FSI.num.cat)], order=TRUE)
+
+
+# Make the simulated data
+set.seed(23434543)
+stream1.cpue <- data.frame(Stream="Stream 1",
+                           cpue = rlnorm(10, meanlog=log(35), sdlog=.3 ))
+stream2.cpue <- data.frame(Stream="Stream 2",
+                           cpue = rlnorm(10, meanlog=log(35), sdlog= .7 ))
+cpue <- rbind(stream1.cpue, stream2.cpue)
+
+med.cpue <- plyr::ddply(cpue, "Stream", plyr::summarize,
+                      med.cpue=median(cpue),
+                      med.cpue.lcl=exp( mean(log(cpue))-1.96*sd(log(cpue))/sqrt(length(cpue))),
+                      med.cpue.ucl=exp( mean(log(cpue))+1.96*sd(log(cpue))/sqrt(length(cpue))))
+
+```
+
+# Introduction
+```{r fsi.tabnum, echo=FALSE}
+fsi.tabnum <- getTABNUM()
+```
+The Fish Sustainability Index (FSI) is Alberta Fish and Wildlife’s 
+method of assessing fish stocks on a provincial scale. One of the 
+components of this index is Population Integrity which is partially 
+assessed using population density. Density comparisons are referenced 
+to what the watershed question could produce if it had no human impacts 
+and consisted of the most ideal habitat in Alberta and is ranked on six 
+point scale (0 to 5) from Functionally Extirpated to Low Risk. 
+For example, Table `r fsi.tabnum` presents draft guidelines for BKTR result in the following 
+ranking based on observed catch per unit effort from one pass electrofishing.
+```{r fsi.threshold, echo=FALSE, results='asis'}
+table <- FSI.threshold[,c(1,3,4,5)]
+colnames(table) <- c('Species\nCode',
+                     'FSI\nCategory',
+                     'Lower\nbound',
+                     'Upper\nbound')
+pandoc.table(table,
+             caption=paste('Table ',fsi.tabnum,'. FSI categories for BKTR'),
+             justify='lrrr',
+             split.cells=c(.5,1,1,1))
+```
+```{r qc.fignum,echo=FALSE}
+qc.fignum <- getFIGNUM()
+```
+
+Quantitative classification of a given population occurs by sampling a watershed at numerous sites (reaches) and observing the CPUE. However data can be very noisy. Consider, for example, a plot of CPUE for three species at Quirk Creek in Figure `r qc.fignum`.
+```{r, out.height="5in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","qc-prelimplot.png"))
+```
+In some situations, classification is straightforward. For example, if the (very) simplistic assumption is made that the FSI categories are identical for all species, then most readers would clearly the BLTR (green lines) in the VHR category in all years. However, what should be done with CTTR. In some years, some sites are above the threshold between VHR and HR, while in other years, both values are below the threshold. By making a single classification solely based on the median ignores the uncertainty in the data.
+
+```{r mb.fignum, echo=FALSE}
+mb.fignum <- getFIGNUM()
+```
+Similarly, consider Figure `r mb.fignum` extracted from results in the Macleod and Berland Watershed. While the mean CPUE all fall within the HR FSI category, the uncertainty in the mean CPUE is large enough that it may actually fall in any of the three categories. 
+```{r, out.height="5in",echo=FALSE, fig.align='center'}
+knitr::include_graphics(file.path("Figures","mb-cat.png"))
+```
+
+Rather than trying to arbitrarily choose a single FSI category 
+and ignore uncertainty, it would be useful to view the 
+assignment as a probabilistic task. For example, 
+we would like to make statements such as “We are 80% certain that 
+this watershed is in the HR category”. 
+
+This gives rise to a number of issues that need to be resolved:
+
+(a)	How can such an assessment be done?
+
+(b)	How many sites must be measured so that you are xx% certain that each watershed is in its appropriate risk category.
+
+(c)	How can these assessments be tracked over time either through long-term trends or running averages
+
+(d)	How many years of sampling and how many sites within each watershed are needed to be xx% certain of detecting a trend. 
+
+
+# Principles of the analysis
+## Using MEDIANS rather than MEANS
+Plots of the standard deviation (between the sites in a year) vs. the 
+mean of the sites in a year generally shows a pattern where the 
+standard deviation increases with the mean. 
+This is quite common when measuring abundance and 
+indicates that a log-normal distribution will be 
+good description of the distribution of measured densities
+among sites within a year. One of the properties of the log-normal distribution is that large outliers are quite common. To account for the impact of 
+these large outliers on the mean across the sites in a year, 
+the MEDIAN is preferred measure of overall trend and of classification to the FSI category. The median is the point where 50% of the values (measurements at sites) 
+are predicted to be above and 50% of the values are predicted to be below. 
+
+If the underlying distribution of readings follows a log-normal distribution, 
+then the median can be estimated by the geometric mean of the raw observations.
+
+
+## Probabilistic assignment of categories
+Consider the following plot of two (simulated) CPUE data sets for two different streams (each sampled for a single year) along with the FSI category boundaries. The "X" indicates the median of the dataset 
+and the error bars show 95% confidence intervals for the median of the data.
+
+```{r baseplot, echo=FALSE, fig.height=3, fig.width=4, dpi=300}
+initplot <- ggplot2::ggplot( data=cpue, aes(x=Stream, y=cpue))+
+  ggtitle("Initial plot of CPUE for two stream with FSI categories")+
+  ylab("CPUE (fish / 300 m")+
+  geom_point( position=position_jitter(w=.1))+
+  geom_point(data=med.cpue, aes(y=med.cpue), shape="X", color="blue", size=4)+
+  geom_errorbar(data=med.cpue, aes(ymin=med.cpue.lcl, ymax=med.cpue.ucl), width=.05)+
+  geom_hline(data=FSI.threshold[1:3,], aes(yintercept=lower), alpha=1, color="red")+
+  geom_text( data=FSI.threshold[1:3,], aes(y=lower, x=-Inf), 
+             label=FSI.threshold[1:3,]$FSI.cat,
+             hjust="left", vjust="bottom", color="red")
+
+initplot
+```
+
+We would like to make statements about the category (VHR, HR or MR) to which each stream belongs.
+In both streams, the median CPUE (blue X) are in the VHR category, but it does not seem
+sensible to definatively rank both streams in the VHR category just because their respective
+medians fall in this category. Indeed, the data for Stream 2 is more variable which results
+in the 95% confidence interval for the median for Stream 2 being wider than the corresponding
+interval for Stream 1. In some sense, we should have a strong belief that the median CPUE
+for Stream 1 is in the VHR category that for Stream 2, but there is some belief that each
+stream could also be in HR category.
+
+It seems natural to ask – what is the “probability that the median density is in each category”. 
+This cannot be answered with classical statistics (mean and confidence intervals) 
+because the actual category membership is fixed (non probabilistic) in any one year. 
+A Bayesian analysis comes to the rescue. A Bayesian would change the question 
+slightly to “what is the belief that the median density is in each category”. 
+The change is crucial, because belief is naturally expressed in a probabilistic framework.
+
+An intuitive explanation for the process is as follows. 
+For each year, estimate the parameters that describe that year’s 
+distribution of density across the sites. If a log-normal distribution 
+is assumed, the parameters are the log(median density) and the 
+standard deviation on the log-scale across ALL possible sites. 
+These values are estimated based (on this case) data from each stream. 
+The  sampling distribution for the log(median) is estimated. 
+A sampling distribution gives the distribution of plausible values 
+for the log(median) for each stream. 
+[A confidence interval can be computed from this sampling distribution but is not used.]. 
+A Bayesian then says that the sampling distribution is interpreted as your 
+belief in the distribution of the log(median) for all sites. 
+Consequently, compute what fraction of the sampling distribution lies between the FSI boundaries and that is your belief (probability) that the median density is in each category.
+
+The actually fitting process cannot be done by hand and 
+requires a method called MCMC to do the Bayesian analysis. 
+As part of the output from an MCMC analysis, 
+quantities such as the probability (belief) that the median is in each category are easily found.
+
+A program was written in BUGS – a standard language for 
+Bayesian analysis and run using JAGS (a program to do Bayesian analysis) 
+from R (an open source statistical software package). 
+All of these programs are available free of charge and can \
+run on a standard desktop computer in a few seconds.
+
+

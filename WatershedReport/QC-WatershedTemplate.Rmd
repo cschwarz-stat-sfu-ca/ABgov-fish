@@ -49,11 +49,11 @@ library(knitr)
 library(lmerTest)
 library(pander)
 library(plyr)
+library(readxl)
 library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
-#  library(xlsx) - This requires java to work properly
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
@@ -74,36 +74,36 @@ target.species <- 'ALL'
 
 # Enter the workbook name and worksheet name containing the FWIS output
 
-workbookName = 'Data/Wampus Creek.xls'
+workbookName = file.path('Data','Wampus Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Wampus Creek.csv")
 
-workbookName = 'Data/Freeman HUC8.xls'
+workbookName = file.path('Data','Freeman HUC8.xls')
 sheetName    = 'F&W 2008 & 2015 '
 csvfilename  = file.path("Data", "Freeman HUC8.csv")
 
-workbookName = 'Data/Quirk Creek.xls'
+workbookName = file.path('Data','Quirk Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 
 # CHoose one of the following code fragments, depending if JAVA is working or not.
 #  If xlxs package is working
 # Check that  FWIS files exists
-#if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
-#cpue <- read.FWIS.workbook(
-#        workbookName  =workbookName,
-#        sheetName     =sheetName,
-#        target.species=target.species)
+cpue <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
 
 # Otherwise read using csv
 # Check that  FWIS files exists
-if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
-
-cpue <- read.FWIS.workbook.csv(
-        csvfilename,
-        target.species=target.species)
+#if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+#
+#cpue <- read.FWIS.workbook.csv(
+#        csvfilename,
+#        target.species=target.species)
 
 
 # check that things seem to be ok so far
@@ -457,7 +457,7 @@ Part of Microsoft Office Professional Plus 2010. Redmond Washington.
 Reilly, J. 2016. GRTS: User friendly method for busy biologists. 
 Alberta Environment and Parks. 4 pp.
 
-Schwarz, C.J. 2017. Bayesian classification into the Alberta FWIS Categories.
+Schwarz, C.J. 2017. Bayesian classification into the Alberta FIS Categories.
 Unpublished report.
 
 Statistical Analysis Software (SAS) Institute Inc. 2016. 

@@ -49,11 +49,11 @@ library(knitr)
 library(lmerTest)
 library(pander)
 library(plyr)
+library(readxl)
 library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
-#  library(xlsx) - This requires java to work properly
 
 source("functions.R")  # functions to read the FWIS workbook etc
 source("FSI.threshold.R")
@@ -74,15 +74,15 @@ target.species <- 'ALL'
 
 # Enter the workbook name and worksheet name containing the FWIS output
 
-workbookName = 'Data/Wampus Creek.xls'
+workbookName = file.path('Data','Wampus Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Wampus Creek.csv")
 
-workbookName = 'Data/Freeman HUC8.xls'
+workbookName = file.path('Data','Freeman HUC8.xls')
 sheetName    = 'F&W 2008 & 2015 '
 csvfilename  = file.path("Data", "Freeman HUC8.csv")
 
-workbookName = 'Data/Quirk Creek.xls'
+workbookName = file.path('Data','Quirk Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 
