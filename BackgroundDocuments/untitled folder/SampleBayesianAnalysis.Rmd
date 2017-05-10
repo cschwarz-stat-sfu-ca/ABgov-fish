@@ -1,6 +1,10 @@
 ---
 title: "Example of Bayesian Analysis"
-output: html_document
+output: 
+    html_document:
+        number_sections: yes
+        toc: yes
+
 ---
 
 ```{r setup, include=FALSE}
@@ -56,9 +60,9 @@ FSI.threshold$FSI.cat <- factor( FSI.threshold$FSI.cat,
 # Make the simulated data
 set.seed(23434543)
 stream1.cpue <- data.frame(Stream="Stream 1",
-                           cpue = rlnorm(10, meanlog=log(35), sdlog=.3 ))
+                           cpue = round(rlnorm(10, meanlog=log(35), sdlog=.3 ),1))
 stream2.cpue <- data.frame(Stream="Stream 2",
-                           cpue = rlnorm(10, meanlog=log(35), sdlog= .7 ))
+                           cpue = round(rlnorm(10, meanlog=log(35), sdlog= .7 ),1))
 cpue <- rbind(stream1.cpue, stream2.cpue)
 
 med.cpue <- plyr::ddply(cpue, "Stream", plyr::summarize,
@@ -76,11 +80,11 @@ The Fish Sustainability Index (FSI) is Alberta Fish and Wildlife’s
 method of assessing fish stocks on a provincial scale. One of the 
 components of this index is Population Integrity which is partially 
 assessed using population density. Density comparisons are referenced 
-to what the watershed question could produce if it had no human impacts 
-and consisted of the most ideal habitat in Alberta and is ranked on six 
+to what the watershed in question could produce if it had no human impacts 
+and consisted of the most ideal habitat in Alberta.  The observed density is ranked on six 
 point scale (0 to 5) from Functionally Extirpated to Low Risk. 
-For example, Table `r fsi.tabnum` presents draft guidelines for BKTR result in the following 
-ranking based on observed catch per unit effort from one pass electrofishing.
+For example, Table `r fsi.tabnum` presents draft guidelines for BKTR 
+based on observed catch per unit effort from one pass electrofishing.
 ```{r fsi.threshold, echo=FALSE, results='asis'}
 table <- FSI.threshold[,c(1,3,4,5)]
 colnames(table) <- c('Species\nCode',
@@ -97,10 +101,94 @@ qc.fignum <- getFIGNUM()
 ```
 
 Quantitative classification of a given population occurs by sampling a watershed at numerous sites (reaches) and observing the CPUE. However data can be very noisy. Consider, for example, a plot of CPUE for three species at Quirk Creek in Figure `r qc.fignum`.
-```{r, out.height="5in",echo=FALSE, fig.align='center'}
-knitr::include_graphics(file.path("Figures","qc-prelimplot.png"))
+```{r, out.height="5in",echo=FALSE, include=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+
+# This comes from the Ghost_Quirk_compiledCPUE_AllSpp.xlsx file
+Quirk.csv <- textConnection(
+"Watershed   ,  HUC   ,  Waterbody Name   ,  Year   ,  Site No   ,  UTM11U_E   ,  UTM11U_N   ,  BKTR   ,  CTTR   ,  BLTR
+Quirk   ,  12   ,  Quirk   ,  1995   ,  LW   ,  657209   ,  5631652   ,  2.60   ,  0.40   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  1996   ,  LW   ,  657209   ,  5631652   ,  7.80   ,  1.00   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  1997   ,  LW   ,  657209   ,  5631652   ,  28.00   ,  8.60   ,  0.60
+Quirk   ,  12   ,  Quirk   ,  1998   ,  LW   ,  657209   ,  5631652   ,  30.40   ,  6.00   ,  0.40
+Quirk   ,  12   ,  Quirk   ,  1998   ,  UP   ,  660029   ,  5630056   ,  43.16   ,  6.32   ,  1.58
+Quirk   ,  12   ,  Quirk   ,  1999   ,  LW   ,  657209   ,  5631652   ,  20.60   ,  3.20   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  1999   ,  UP   ,  660029   ,  5630056   ,  31.32   ,  4.74   ,  1.05
+Quirk   ,  12   ,  Quirk   ,  2000   ,  LW   ,  657209   ,  5631652   ,  40.00   ,  7.60   ,  0.60
+Quirk   ,  12   ,  Quirk   ,  2000   ,  UP   ,  660029   ,  5630056   ,  58.68   ,  15.26   ,  1.05
+Quirk   ,  12   ,  Quirk   ,  2002   ,  LW   ,  657209   ,  5631652   ,  21.20   ,  2.20   ,  0.40
+Quirk   ,  12   ,  Quirk   ,  2002   ,  UP   ,  660029   ,  5630056   ,  17.11   ,  1.58   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2003   ,  LW   ,  657209   ,  5631652   ,  8.80   ,  16.20   ,  1.40
+Quirk   ,  12   ,  Quirk   ,  2003   ,  UP   ,  660029   ,  5630056   ,  18.95   ,  5.00   ,  2.11
+Quirk   ,  12   ,  Quirk   ,  2004   ,  LW   ,  657209   ,  5631652   ,  7.00   ,  7.40   ,  1.60
+Quirk   ,  12   ,  Quirk   ,  2004   ,  UP   ,  660029   ,  5630056   ,  21.32   ,  11.32   ,  0.53
+Quirk   ,  12   ,  Quirk   ,  2005   ,  LW   ,  657209   ,  5631652   ,  19.20   ,  8.60   ,  1.20
+Quirk   ,  12   ,  Quirk   ,  2005   ,  UP   ,  660029   ,  5630056   ,  20.26   ,  12.37   ,  2.37
+Quirk   ,  12   ,  Quirk   ,  2006   ,  LW   ,  657209   ,  5631652   ,  9.20   ,  2.00   ,  0.80
+Quirk   ,  12   ,  Quirk   ,  2006   ,  UP   ,  660029   ,  5630056   ,  22.63   ,  6.84   ,  1.05
+Quirk   ,  12   ,  Quirk   ,  2007   ,  LW   ,  657209   ,  5631652   ,  15.60   ,  10.20   ,  2.00
+Quirk   ,  12   ,  Quirk   ,  2007   ,  UP   ,  660029   ,  5630056   ,  18.42   ,  18.16   ,  2.11
+Quirk   ,  12   ,  Quirk   ,  2008   ,  LW   ,  657209   ,  5631652   ,  2.40   ,  6.40   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2008   ,  UP   ,  660029   ,  5630056   ,  15.00   ,  12.37   ,  0.26
+Quirk   ,  12   ,  Quirk   ,  2009   ,  LW   ,  657209   ,  5631652   ,  4.40   ,  7.00   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2009   ,  UP   ,  660029   ,  5630056   ,  5.00   ,  8.42   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2010   ,  LW   ,  657209   ,  5631652   ,  13.80   ,  6.80   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2010   ,  UP   ,  660029   ,  5630056   ,  11.58   ,  10.79   ,  0.53
+Quirk   ,  12   ,  Quirk   ,  2011   ,  LW   ,  657209   ,  5631652   ,  14.40   ,  13.60   ,  0.20
+Quirk   ,  12   ,  Quirk   ,  2011   ,  UP   ,  660029   ,  5630056   ,  26.84   ,  22.89   ,  0.53
+Quirk   ,  12   ,  Quirk   ,  2012   ,  LW   ,  657209   ,  5631652   ,  6.80   ,  6.20   ,  0.80
+Quirk   ,  12   ,  Quirk   ,  2012   ,  UP   ,  660029   ,  5630056   ,  9.21   ,  5.53   ,  0.53
+Quirk   ,  12   ,  Quirk   ,  2013   ,  LW   ,  657209   ,  5631652   ,  4.20   ,  3.80   ,  0.80
+Quirk   ,  12   ,  Quirk   ,  2013   ,  UP   ,  660029   ,  5630056   ,  8.16   ,  4.74   ,  0.26
+Quirk   ,  12   ,  Quirk   ,  2014   ,  LW   ,  657209   ,  5631652   ,  3.40   ,  3.40   ,  0.00
+Quirk   ,  12   ,  Quirk   ,  2014   ,  UP   ,  660029   ,  5630056   ,  10.26   ,  2.11   ,  0.26")
+
+pass <- read.csv(Quirk.csv, header=TRUE, as.is=TRUE, strip.white=TRUE)
+
+pass.melt <- reshape2::melt(pass,
+                            id.vars=c("Watershed","Year","Site.No"),
+                            measure.vars=c("BKTR","CTTR","BLTR"),
+                            variable.name="Species",
+                            value.name="Density")
+pass.melt$Species <- as.character(pass.melt$Species)
+str(pass.melt)
+# note that the data frame has density as fish/100m, but the standards are in 
+# terms of fish/300m so we need to multiply by 3
+pass.melt$Density <- pass.melt$Density*3
+
+
+# add in all combinations of year and species so that plot "breaks" when data stops
+all.year.species <- expand.grid(Year=min(pass.melt$Year,na.rm=TRUE):max(pass.melt$Year, na.rm=TRUE),
+                                Species=unique(pass.melt$Species), 
+                                Site.No=unique(pass.melt$Site.No), 
+                                Watershed=unique(pass.melt$Watershed),stringsAsFactors=FALSE)
+dim(pass.melt)
+pass.melt <- merge(pass.melt, all.year.species, all=TRUE)
+dim(pass.melt)
+xtabs(~Species+Year, data=pass.melt, exclude=NULL, na.action=na.pass)
+
+
+raw.trend <- ggplot2::ggplot(data=pass.melt, aes(x=Year, y=Density, color=Species, linetype=Site.No))+
+   ggtitle(paste("Figure ",qc.fignum,". Raw data for Quirk Creek with FSI categories",sep=""))+
+   geom_point()+
+   geom_line()+
+   geom_hline(data=FSI.threshold, aes(yintercept=lower), alpha=0.2)+
+   ylab("Density (fish/300 m2)")
+#raw.trend
+
+
+raw.trend.log <- ggplot2::ggplot(data=pass.melt, aes(x=Year, y=log(Density+.1), color=Species, linetype=Site.No))+
+   ggtitle("Raw data for Quirk Creek with FSI categories")+
+   geom_point()+
+   geom_line()+
+   geom_hline(data=FSI.threshold, aes(yintercept=log(lower+.1)), alpha=0.2)+
+   ylab("log of Density (fish/300 m2)")
+#raw.trend.log
 ```
-In some situations, classification is straightforward. For example, if the (very) simplistic assumption is made that the FSI categories are identical for all species, then most readers would clearly the BLTR (green lines) in the VHR category in all years. However, what should be done with CTTR. In some years, some sites are above the threshold between VHR and HR, while in other years, both values are below the threshold. By making a single classification solely based on the median ignores the uncertainty in the data.
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+raw.trend
+```
+
+In some situations, classification is straightforward. For example, if the (very) simplistic assumption is made that the FSI categories are identical for all species, then most readers would clearly place the BLTR (green lines) in the VHR category in all years. However, what should be done with CTTR. In some years, some sites are above the threshold between VHR and HR, while in other years, both values are below the threshold. By making a single classification solely based on the median ignores the variability in the data.
 
 ```{r mb.fignum, echo=FALSE}
 mb.fignum <- getFIGNUM()
@@ -118,20 +206,35 @@ this watershed is in the HR category”.
 
 This gives rise to a number of issues that need to be resolved:
 
-(a)	How can such an assessment be done?
+(a) How can such an assessment be done?
 
-(b)	How many sites must be measured so that you are xx% certain that each watershed is in its appropriate risk category.
+(b) How can these assessments be tracked over time either through long-term trends or running averages
 
-(c)	How can these assessments be tracked over time either through long-term trends or running averages
+(c) How many sites must be measured so that you are xx% certain that each watershed is in its appropriate risk category.
 
-(d)	How many years of sampling and how many sites within each watershed are needed to be xx% certain of detecting a trend. 
 
 
 # Principles of the analysis
 ## Using MEDIANS rather than MEANS
+```{r sd.fignum, echo=FALSE}
+sd.fignum <- getFIGNUM()
+```
 Plots of the standard deviation (between the sites in a year) vs. the 
 mean of the sites in a year generally shows a pattern where the 
-standard deviation increases with the mean. 
+standard deviation increases with the mean such as seen in Figure `r sd.fignum`
+for Quirk Creek:
+```{r SD.vs.mean, echo=FALSE, message=FALSE, warning=FALSE}
+sd.vs.mean <- plyr::ddply(pass.melt, c("Watershed","Year","Species"), plyr::summarize,
+                          mean.density = mean(Density),
+                          sd.density   = sd  (Density))
+sdplot <- ggplot2::ggplot(data=sd.vs.mean, aes(x=mean.density, y=sd.density))+
+   ggtitle(paste("Figure ', sd.fignum,'. SD vs. Mean for Density ",sep=""))+
+   xlab("Mean Density (fish / 300 m")+ylab("SD Density (fish / 300 m")+
+   geom_point()+
+   facet_wrap(~Species, ncol=2, scale="free")
+sdplot
+```
+
 This is quite common when measuring abundance and 
 indicates that a log-normal distribution will be 
 good description of the distribution of measured densities
@@ -148,10 +251,10 @@ then the median can be estimated by the geometric mean of the raw observations.
 Consider the following plot of two (simulated) CPUE data sets for two different streams (each sampled for a single year) along with the FSI category boundaries. The "X" indicates the median of the dataset 
 and the error bars show 95% confidence intervals for the median of the data.
 
-```{r baseplot, echo=FALSE, fig.height=3, fig.width=4, dpi=300}
+```{r baseplot, echo=FALSE, fig.height=3, fig.width=5, out.height="4in", dpi=300}
 initplot <- ggplot2::ggplot( data=cpue, aes(x=Stream, y=cpue))+
-  ggtitle("Initial plot of CPUE for two stream with FSI categories")+
-  ylab("CPUE (fish / 300 m")+
+  ggtitle("Initial plot of CPUE for two streams")+
+  ylab("CPUE (fish / 300 m)")+
   geom_point( position=position_jitter(w=.1))+
   geom_point(data=med.cpue, aes(y=med.cpue), shape="X", color="blue", size=4)+
   geom_errorbar(data=med.cpue, aes(ymin=med.cpue.lcl, ymax=med.cpue.ucl), width=.05)+
@@ -168,7 +271,7 @@ In both streams, the median CPUE (blue X) are in the VHR category, but it does n
 sensible to definatively rank both streams in the VHR category just because their respective
 medians fall in this category. Indeed, the data for Stream 2 is more variable which results
 in the 95% confidence interval for the median for Stream 2 being wider than the corresponding
-interval for Stream 1. In some sense, we should have a strong belief that the median CPUE
+interval for Stream 1. In some sense, we should have a stronger belief that the median CPUE
 for Stream 1 is in the VHR category that for Stream 2, but there is some belief that each
 stream could also be in HR category.
 
@@ -182,7 +285,7 @@ The change is crucial, because belief is naturally expressed in a probabilistic 
 An intuitive explanation for the process is as follows. 
 For each year, estimate the parameters that describe that year’s 
 distribution of density across the sites. If a log-normal distribution 
-is assumed, the parameters are the log(median density) and the 
+is assumed, the parameters desribe the distribution are the log(median density) and the 
 standard deviation on the log-scale across ALL possible sites. 
 These values are estimated based (on this case) data from each stream. 
 The  sampling distribution for the log(median) is estimated. 
@@ -198,10 +301,332 @@ requires a method called MCMC to do the Bayesian analysis.
 As part of the output from an MCMC analysis, 
 quantities such as the probability (belief) that the median is in each category are easily found.
 
-A program was written in BUGS – a standard language for 
-Bayesian analysis and run using JAGS (a program to do Bayesian analysis) 
+A common language to describe Bayesian models is  BUGS. There are several computer
+programs (WinBugs, OpenBugs, JAGS, etc.) 
+that take the Bayesian model described by BUGS and perform a Monte Carlo Markov
+Chain (MCMC) analysis to estimate the posterior distributon of the parameters
+of interest. We use JAGS which is called 
 from R (an open source statistical software package). 
-All of these programs are available free of charge and can \
-run on a standard desktop computer in a few seconds.
+
+For example, here is the BUGS code to do a probabilistic assignment of each stream
+to the FSI category above:
+
+```{r SimpleBayes, echo=TRUE}
+cat(file="model.txt", "
+    ############################################################
+    # Input data is
+    #   Ndata   - number of data points measured for the stream
+    #   Density   - the Density as measured by the CPUE at each site
+
+    #   NFSI      - number of FSI categories
+    #   FSI.lower - the upper and lower bounds of the FSI
+    #   FSI.upper   categories
+    ############################################################
+
+  model {
+    
+    # likelihood - log normal distribution of cpue density values
+    for(i in 1:Ndata){
+       Density[i] ~ dlnorm(log.median, tau)
+    }
+
+    # prior distribution for log.median and tau
+    # tau is 1/sd
+    tau <- 1/(sd.log*sd.log)
+    sd.log ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+
+    # priors for the log.median
+    log.median ~dnorm( 0, .00001) # virtually no information in prior
+
+   # derived variables.
+   # median.den is antilog of  log.medianl 
+   median <- exp(log.median)
+
+   # probability of median being in each threshold category 
+   for(k in 1:NFSI){
+      prob.FSI.cat[k] <- ifelse((median >= FSI.lower[k]) && (median < FSI.upper[k]),1,0)
+   }
+}
+") # End of the model
+
+```
+
+All Bayesian model have two components.
+
+First, is the likelihood, i.e. what is the probability distribution of the data?
+In this case, we are assuming a log-normal distribution (`dlnorm`). Note that in the
+BUGS langauge, the second parmaeter (denoted as `tau` represents 1/variance. The two parameters
+that describe this log-normal distribution are the log(median) (`log.median`) and the
+standard deviation on the log-scale (`SD.log`). The `for` loop assumes that all of the 
+data from this stream comes from the same log-normal distribution.
+
+Second is the prior distribution for the unknown parameters. Here we chose relatively
+uninformative priors for both parameters.
+
+During each interation in the MCMC process, the estimates of the parameters (the
+`log.median` and `sd.log`) are updated using standard Bayesian methods. This updating
+process generates a sample from the posterior distribution as shown later.
+
+We can also compute derived variables for each interation of the MCMC process.
+In this case, we take the anti-logarithm of the `log.median` and then use
+the estimated median to see in which FSI category it lies. For each iteration, if
+the estimated median lies between the lower and upper bound of the FSI category,
+it generates a 1 otherwise a 0.  This generated string of 0's and 1's is used
+to estimate the probability of falling in each FSI category as explained later.
+
+We now set up _R_ variables to hold the data being passed to JAGS (the data.list),
+the initial values for the MCMC chains (we leave these blank and let JAGS generate them),
+and which variable we want posteriors to be estimated (the monitor.list).
+
+```{r run.sample1, echo=TRUE}
+data.list <- list(Ndata      =length(stream1.cpue$cpue),
+                  Density    =stream1.cpue$cpue,  
+                  NFSI       =nrow(FSI.threshold),
+                  FSI.lower  =FSI.threshold$lower,
+                  FSI.upper  =FSI.threshold$upper)
+data.list
+
+
+# Next create the initial values.
+
+init.list <- list(
+   list(), list(), list()
+)
+
+# Next create the list of parameters to monitor to get posterior
+# 
+monitor.list <- c("log.median", "sd.log","median","prob.FSI.cat")
+```
+
+Now we call JAGS using the `jags()` function from the `R2JAGS` package:
+```{r run.jags.stream1, echo=TRUE}
+
+# Finally, the actual call to JAGS
+set.seed(4534534)  # intitalize seed for MCMC 
+
+results <- jags( 
+  data      =data.list,   # list of data variables
+  inits     =init.list,   # list/function for initial values
+  parameters=monitor.list,# list of parameters to monitor
+  model.file="model.txt",  # file with bugs model
+  n.chains=3,
+  n.iter  =5000,          # total iterations INCLUDING burn in
+  n.burnin=2000,          # number of burning iterations
+  n.thin=2,               # how much to thin
+  DIC=TRUE,               # is DIC to be computed?
+  working.dir=getwd()    # store results in current working directory
+)
+
+```
+
+The output from the call to JAGS (the `results` object) is a complex object
+that has many components. We will look at some of them:
+
+There are several thousand samples generated for each posterior. 
+Here are some of the samples from the posterior distributions
+(extracted from `results$BUGSoutput$sim.matrix`) for the `log.median` and the `median`.
+```{r stream1.post.samples, echo=FALSE, comment=NA}
+round(results$BUGSoutput$sims.matrix[1:5,c("log.median","median")],2)
+```
+For each iteration in the MCMC process, a value for the `log.median' and the `median` 
+is generated as shown above. These values form the posterior sample for their
+respective parameters. 
+
+Then for each of the posterior samples from the median, a 0/1 indicator variable
+is created for each FSI category:
+```{r stream1.post.samples.fsi, echo=FALSE, comment=NA}
+ options(width=200)
+    results$BUGSoutput$sims.matrix[1:5,colnames(results$BUGSoutput$sims.matrix)
+                                    [grepl("prob.FSI",colnames(results$BUGSoutput$sims.matrix))]]
+```
+In this case, 4/5 of the posterior samples for the median are in the first
+FSI category, and 1/5 of the posterior samples for the median are in the second
+fsi category. This would correspond to a 80% posterior belief that the median 
+is in the first FSI category and a 20% posterior belief that the median
+is in the second FSI category. 
+
+Of course, we look at the averages of the entire set of posterior samples (a grand
+total of `r nrow(results$BUGSoutput$sims.matrix)` samples in each posterior sample).
+The mean and standard deviation for the `log.median` and `median` are:
+```{r stream1.mean.post1, echo=FALSE, comment=NA}
+round(results$BUGSoutput$summary[c("log.median","median"),c("mean","sd","2.5%","97.5%")],2)
+```
+The estmated median of the CPUE for stream 1 is `r round(results$BUGSoutput$mean$median,2)`
+with a 95% credible interval of (
+`r paste(round(results$BUGSoutput$summary[c("median"),c("2.5%","97.5%")],2),collapse=" - ")`).
+
+Finally, the posterior belief that the median is in each FSI category is
+```{r stream1.mean.post2, echo=FALSE, comment=NA}
+temp <- round(results$BUGSoutput$summary[rownames(results$BUGSoutput$summary)
+                                    [grepl("prob.FSI",rownames(results$BUGSoutput$summary))]
+                                 ,c("mean"),drop=FALSE],2)
+colnames(temp) <- "Probability"
+cat("Probability of Stream 1 in each FSI category")
+temp
+```
+
+
+```{r fit.stream2, echo=FALSE,include=FALSE, comment=NA}
+
+
+data.list <- list(Ndata      =length(stream2.cpue$cpue),
+                  Density    =stream2.cpue$cpue,  
+                  NFSI       =nrow(FSI.threshold),
+                  FSI.lower  =FSI.threshold$lower,
+                  FSI.upper  =FSI.threshold$upper)
+
+results2 <- jags( 
+  data      =data.list,   # list of data variables
+  inits     =init.list,   # list/function for initial values
+  parameters=monitor.list,# list of parameters to monitor
+  model.file="model.txt",  # file with bugs model
+  n.chains=3,
+  n.iter  =5000,          # total iterations INCLUDING burn in
+  n.burnin=2000,          # number of burning iterations
+  n.thin=2,               # how much to thin
+  DIC=TRUE,               # is DIC to be computed?
+  working.dir=getwd()    # store results in current working directory
+)
+```
+The same set of computation can be done for Stream 2 and we obtain the following
+results for Stream 2:
+
+Finally, the posterior belief that the median is in each FSI category is
+```{r stream2.mean.post2, echo=FALSE, comment=NA}
+temp <- round(results2$BUGSoutput$summary[rownames(results2$BUGSoutput$summary)
+                                    [grepl("prob.FSI",rownames(results2$BUGSoutput$summary))]
+                                 ,c("mean"),drop=FALSE],2)
+colnames(temp) <- "Probability"
+cat("Probability of Stream 2 in each FSI category")
+temp
+```
+As expected, we see a shift in the posterior beliefs for Stream 2 vs Stream 1.
+
+# Multiple years of data
+The previous section showed how a probabilistic assessment could be
+made for a single year of data for a watershed. Naively, you could do a similar
+assessment for each year. However, there are two problem with such a naive analysis.
+
+(a) Some sites repeated measured over time. We saw in the Quirk Creek examples
+above that the same sites were repeatedly measured over time. This implies
+that the data values across years are not independent from each other. For 
+example, one site (due to local site-specific effects) could tend to always 
+have a higher than average density across years. Any analysis must account
+for these repeated measurements over tme
+
+(b) There may be considerable year-specific effects (process error). Year-specific
+effects tend to push the densities in all sites up or down in a particular year
+due to effects typically that cannot be controlled. For example, a specific year
+could be warmer than usual leading to warmer water temperatures and affecting
+the efficiency of the electrofishing in all sites in a year. These year-specific effects
+could cause the probabilistic assessment to vary considerably from year to year 
+due to random events that are unrelated to the long-term trends in the data.
+The related document on the number of years and sites needed to detect certain trends
+has a fuller discussion of year-specific effects (process error).
+
+Statistical models can be developed to fit trend over time and deal with the above two problems.
+Such models are linear mixed models (LMM) and take the form (in standard  _R_ syntax):
+`log(Density) ~ Year + YearC(R) + Site(R)`
+where the `log(Density)` is the logarithm of the observed density from electrofishing,
+`Year` represents the linear trend over time in the log(median); 
+`YearC(R)` represents the (random) year-specific effects;
+and `Site(R)` represents the (random) site-specific effects.
+
+Both the year-specific and site-specific effects are assumed to follow a Normal 
+distribution with mean 0 and year-specific and site-specific standard deviations.
+
+A similar Bayesian model can be developed that accounts for year-specific and site-specific
+effects.
+
+```{r trend.model}
+cat(file="model.txt", "
+    ############################################################
+    # Input data
+    #      Ndata  - number of data points
+    #      Density- density for each data point
+    #      Site.num- site number for each data point (1....NSites)
+    #      Year.num- year number for each data point (1... Nyears)
+
+    ############################################################
+
+    # compute the number of years (1...) and number of sites
+data {
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+     }    
+
+model {
+    
+    # compute the trend line
+    for(i in 1:Nyears){
+          log.median.trend[i] <- beta0 + beta1*i
+    }
+
+    # add the site-effects and year-effects to the trend
+    for(i in 1:Ndata){
+       log.median.data[i] <- log.median.trend[Year.num[i]] + 
+                     site.eff[Site.num[i]] +  
+                     year.eff[Year.num[i]]
+       Density[i] ~ dlnorm( log.median.data[i], tau)
+    }
+
+    # tau is 1/(sd.log * sd.log)
+    tau <- 1/(sd.log*sd.log)
+    sd.log ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    
+    # priors for the intercept and slope
+    beta0 ~ dnorm(0, .001)
+    beta1 ~ dnorm(0, .001)
+
+    # random effect of Year 
+    for(i in 1:Nyears){
+          year.eff[i] ~ dnorm(0, tau.year.eff)
+    }
+    tau.year.eff <- 1/(sd.year.eff*sd.year.eff)
+    sd.year.eff  ~ dunif(.01,2)
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+          site.eff[i] ~ dnorm(0, tau.site.eff)
+    }
+    tau.site.eff <- 1/(sd.site.eff * sd.site.eff)
+    sd.site.eff  ~ dunif(.01, 2)
+
+    # what is the probability that the trend is negative
+    p.beta1.lt.0 <- ifelse(beta1<0,1,0)
+
+   # derived variables.
+   for(i in 1:Nyears){
+      med.den.trend [i] <- exp(log.median.trend  [i])
+   }
+
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(k in 1:NFSI){
+          prob.FSI.cat.trend[i,k] <- ifelse((med.den.trend[i] >= FSI.lower[k]) && 
+                                            (med.den.trend[i] <  FSI.upper[k]),1,0)
+      }
+   }
+}
+") # End of the model
+```
+
+
+
+
+
+
+
+
+
+In exactly the same way, a sample from the posterior of the estimated median based on the underlying trend can be found using MCMC methods. Each value from the posterior sample
+from the median can be compared to the FSI categories and the probabilistic assessment
+can be computed based on the underlying trend. This should be more stable because the
+year-specific effect have been "removed" before the probabilistic assessment is made.
+
+
+
+
+
 
 
