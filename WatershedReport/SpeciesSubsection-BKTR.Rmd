@@ -7,9 +7,9 @@ Version <- '2017-05-05'
 
 ```{r BKTRSummary, echo=FALSE, message=FALSE, warning=FALSE }
 # Comput the summary statstics for each species by year
-cpue.select <- cpue[ cpue$Species.Code == species.select,]
+fish.select <- fish[ fish$Species.Code == species.select,]
 
-fish.stat <- plyr::ddply(cpue.select, c("Species.Code","Year"), plyr::summarize,
+fish.stat <- plyr::ddply(fish.select, c("Species.Code","Year"), plyr::summarize,
                    nfish = length(Fork.Length..mm.),
                    fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
                    fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
@@ -45,7 +45,7 @@ colnames(fish.table) <- c(
 pandoc.table(fish.table[,-1],
              caption=paste("Table ", BKTR.tab.fishsummary,". Summary statistics on fork length for ",
                            species.select,
-                           " captured in ",cpue$WatershedName[1], sep=""),
+                           " captured in ",fish$WatershedName[1], sep=""),
              justify='rrrrr',
              split.cells=c(1,1,1,1,1))
 ```
@@ -65,7 +65,7 @@ sumstat.melt$Measure <- car::recode(sumstat.melt$Measure,
 
 sumstatplot <- ggplot2::ggplot(data=sumstat.melt, aes(x=Year, y=Length, color=Measure))+
    ggtitle(paste('Figure ', BKTR.fig.forklength,'. Trends in fork length for ', species.select,
-                 ' on ', cpue.select$WatershedName[1],sep=""))+
+                 ' on ', fish.select$WatershedName[1],sep=""))+
    theme(plot.title = element_text(size = 8))+  # change text size for title
    geom_point()+
    geom_line()+
@@ -90,9 +90,9 @@ Black vertical line indicates estimated length at 50\% maturity (`r BKTR.MatureF
 
 ```{r BKTR.lengthdist, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, dpi=300}
 # Create a histogram of the fork length over all years
-lengthdist <- ggplot2::ggplot(data=cpue.select, aes(x=Fork.Length..mm., y=..density..))+
+lengthdist <- ggplot2::ggplot(data=fish.select, aes(x=Fork.Length..mm., y=..density..))+
    ggtitle(paste("Figure ", fig.BKTR.lengthdist,". Fork length distribution for ", species.select,' on ',
-                 cpue.select$WatershedName[1],sep=""))+
+                 fish.select$WatershedName[1],sep=""))+
    theme(plot.title = element_text(size = 8))+  # change text size for title
    geom_histogram(alpha=0.2)+ 
    geom_density()+

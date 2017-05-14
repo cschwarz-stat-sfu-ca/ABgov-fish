@@ -1,6 +1,0 @@
-Quirk
-- no replicate measurements/year so I don’t know how to compute
-  probability that in each risk zone for each site
-- We are interested in site-to-site variation as a description of what is going on.
-
-

@@ -557,9 +557,6 @@ in item (6) of the installation instructions in the above link. You will also ne
 
 * _RStudio_. An integrated development environment that controls _R_ and its output.
 
-* _JAVA_. In order to read the FWIS files directly you will have to authorize _JAVA_ programs on your computer.
-If you are unable to authorize _JAVA_, you will need to save the FWIS files into a _csv_ format.
-
 
 ## Getting the FWIS data
 Information on each watershed is extracted from the FWIS database. Contact ????? for further details.
@@ -567,10 +564,6 @@ Information on each watershed is extracted from the FWIS database. Contact ?????
 **The current extraction program creates Excel 95 files. 
 _R_ requires workbooks to be in Excel 97 or later format, so you will have to open and save
 the file as Excel 97 or later format.**
-
-It may be difficult to get _Java_ to work properly on many computers. For example, on Macintosh computers,
-the security settings are set high enough that _Java_ cannot be called from _R_ unless you are able
-to make deep modifications to system files. 
 
 Many people simply find it easier to to save the FWIS file as a _csv_ file and use that directly.
 
@@ -614,9 +607,6 @@ Move the FWIS data file to the _Data_ directory. **The data file MUST be in Exce
 The FWIS extraction system currently creates an Excel 95 file. You will have to open it and re-save it as an Excel 97 or later
 document (either _.xls_ or _.xlsx_ is fine).
 
-If you are unable to get _Java_ to work on your computer, open the FWIS data file and save the 'F&W' sheet as a _csv_ file.
-You will have to modify the main template file as noted later.
-
 The _Data_ directory will look like:
 ```{r, out.height="2.5in",echo=FALSE, fig.align='center'}
 knitr::include_graphics(file.path("Figures","DataDirectory.png"))
@@ -644,9 +634,9 @@ knitr::include_graphics(file.path("Figures","DuplicatedFiles.png"))
 Specify the workbook name and/or the csv file name in the template file such as shown below:
 ```{r FileNames, echo=TRUE, eval=FALSE}
 # Enter the workbook name and worksheet name containing the FWIS output
-# If JAVA isn't working, enter the name of the csv file.
+# Or enter the name of the csv file.
 
-workbookName = 'Data/Quirk Creek.xls'
+workbookName = file.path('Data','Quirk Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 ```

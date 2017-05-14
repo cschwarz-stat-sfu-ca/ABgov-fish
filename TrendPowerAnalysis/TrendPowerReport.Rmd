@@ -39,6 +39,10 @@ source("functions.R")
 .TABNUM <- 0
 
 
+target.species <- 'ALL'
+#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+
+
 # Get the raw data and do editing. This won't appear in the report, but gives you 
 # an audit trail of what you did to the raw data before creating the rest of the
 # template
@@ -56,96 +60,112 @@ csvfilename  = file.path("Data","Quirk Creek.csv")
 #if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
-#cpue <- read.FWIS.workbook(
-#        workbookName  =workbookName,
-#        sheetName     =sheetName,
-#        target.species=target.species)
+fish <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
 
 # Read the csv file
 # Check that  FWIS files exists
-if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+#if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
 
-cpue <- read.FWIS.workbook.csv(
-        csvfilename)
+#fish <- read.FWIS.workbook.csv(
+#        csvfilename)
+
+survey.type.wanted <- tolower(c('Electrofishing'))  # make sure spelling is correct!
 
 
-# check that things seem to be ok so far
-head(cpue)
+
+
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(fish)
+fish <- fish[ tolower(fish$Survey.Type) %in% survey.type.wanted,]
+dim(fish)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+
+# we need to create 3 files (corresponding to 3rd normal forms for relational tables)
+# for further processing
+#  (a) Inventory records - when and where was an inventory taken
+#          watershedName Year Location Inventory.Survey.ID
+# 
+#  (b) Catch Summary - how many fish by species were captured. 
+#      We expand (a) to include catch including 0 catch for all species seen during any inventory
+#          WatershedName Year Location Inventory.Survey.Id  Distance Time Species.Code Catch
+# 
+#  Cc) Fish length records - records for fish actually captured and measured this is basically the FWIS data readin
+#          WatershedName Year Location Inventory.Survey.ID  Species.Code Fork.Length..m. 
+
+#---------------------------------------
+# Get the inventory records 
+inventory <- plyr::ddply(fish, c("Inventory.Survey.ID"), function(x){
+    # just pull out the first record and drop all of the fish information
+    inventory <- x[1,, drop=FALSE]
+    drop.columns <- c("Angler.Count","Pass.Number","Captured.Count","Total.Count.of.Species.by.SurveyID",
+                      "Species.Code","Species.Common.Name","Weight..g.","Fork.Length..mm.",
+                      "Total.Length..mm.","Gender","Age")
+    inventory <- inventory[, !names(inventory) %in% drop.columns]
+    as.data.frame(inventory)
+})
+
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(inventory)
+inventory <- inventory[ tolower(inventory$Survey.Type) %in% survey.type.wanted,]
+dim(inventory)
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+
+# Check the inventory records to make sure that everything is consistent
+# 
+inventory[,c("WatershedName","Year","Activity.Date","Inventory.Survey.ID")]
 
 # what years are present in this workbooks?
-xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Year, data=inventory, exclude=NULL, na.action=na.pass)
 
-# what species are present in this workbook
-xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
-
-# After reading in the data, you should check  basic statistics such as the years
-# measurements are taken, the Location names are spelled consistently, etc
-xtabs(~Activity.Date+Inventory.Survey.ID, data=cpue, exclude=NULL, na.action=na.pass)
-unique(cpue[,c("Activity.Date","Inventory.Survey.ID")])
-
-
-xtabs(~LocationTTM+Year,      data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year,      data=inventory , exclude=NULL, na.action=na.pass)
 # are there any dates that are invalid
-cpue[ is.na(cpue$Year),]
-
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
-cpue[ is.na(cpue$Species.Code) | cpue$Species.Code=="",]
-# remove records with blank species codes
-dim(cpue)
-cpue <- cpue[ !(is.na(cpue$Species.Code) | cpue$Species.Code==""),]
-dim(cpue)
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
-
-
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
-# Remove all non-electrofishing survey types
-dim(cpue)
-cpue <- cpue[ cpue$Survey.Type %in% c("Electrofishing"),]
-dim(cpue)
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
-
-
-# Check the equipment type field
-xtabs(~Equipment.Type + Year,    data=cpue , exclude=NULL, na.action=na.pass)
-xtabs(~Equipment.Type + Survey.Type, data=cpue, exclude=NULL, na.action=na.pass)
+inventory[ is.na(inventory$Year),]
 
 # check the Distance and time fields
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
 
 # impute a distance field
-cpue$Distance..m.[ is.na(cpue$Distance..m.)] <- 100
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+inventory$Distance..m.[ is.na(inventory$Distance..m.)] <- 100
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
 
-xtabs(~Inventory.Survey.ID+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+#xtabs(~Inventory.Survey.ID+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
 
-xtabs(~Time..s.,     data=cpue, exclude=NULL, na.action=na.pass)# remove data where no distance or time
+xtabs(~Time..s.,     data=inventory, exclude=NULL, na.action=na.pass)# remove data where no distance or time
 
 
-# check the counts by species
-xtabs(~Species.Code+Total.Count.of.Species.by.SurveyID, data=cpue, exclude=NULL, na.action=na.pass)
-
-# Compute the catch summary
+#---------------------------------------------------------------------------------------
+#  Create the catch summary
 # We first extract for each Inventory.Survey.ID, one record per species
-catch.summary <- plyr::ddply(cpue, c("WatershedName","Species.Code","Inventory.Survey.ID","Year","LocationTTM"), plyr::summarize,
-                            Distance..m. = mean(Distance..m., na.rm=TRUE),
+catch.summary <- plyr::ddply(fish, c("Species.Code","Inventory.Survey.ID"), plyr::summarize,
                             Count        = mean(Total.Count.of.Species.by.SurveyID))
+# Any inventory with 0 counts for all species will have Species.Code = NA
+catch.summary[ is.na(catch.summary$Species.Code),]
+dim(catch.summary)
+catch.summary <- catch.summary[ !is.na(catch.summary$Species.Code),]
+dim(catch.summary)
+
 # Now we need to expand for each Inventory.Survey.ID the full set of species 
 # and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
 which.species <- unique(catch.summary$Species.Code)
-all.catch <- plyr::ddply(catch.summary, "Inventory.Survey.ID", function(x, species.list){
+all.catch <- plyr::ddply(inventory, "Inventory.Survey.ID", function(x, species.list){
      all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
-                                Distance..m.       =x$Distance..m.[1],
-                                Year               =x$Year[1],
-                                LocationTTM        =x$LocationTTM[1],
-                                WatershedName      =x$WatershedName[1],
                                 Species.Code       =species.list,
                                 stringsAsFactors=FALSE)
      all.species
 }, species.list=which.species)
 catch.summary <- merge(catch.summary, all.catch, all=TRUE)
 catch.summary$Count[ is.na(catch.summary$Count)] <- 0
+catch.summary <- merge(catch.summary, inventory, all.x=TRUE)   # merge it back with inventory records get inventory infor
 
 catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
                              Distance..m. = sum(Distance..m., na.rm=TRUE),
@@ -153,12 +173,32 @@ catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Ye
                              CPUE.300m    = Count / Distance..m. * 300)
 
 xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(Count~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
 xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
 xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
 
+#---------------------------------------------------------------------------------------
+#  Look at the fish records - only those fish that are measured are capture
+drop.columns <- c("Captured.Count", "Total.Count.of.Species.by.SurveyID")
+fish <- fish[, !names(fish) %in% drop.columns]
 
-target.species <- 'ALL'
-#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+# drop any record with Species.Code being blank because that inventory record had 0 fish captured
+dim(fish)
+# what species are present in this workbook
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+fish <- fish[!is.na(fish$Species.Code),]
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+# Check the fork length field
+plyr::ddply(fish, c("Species.Code"), plyr::summarize, 
+            nfish=length(Fork.Length..mm.),
+            nmiss=sum(is.na(Fork.Length..mm.)),
+            fl.min=min(Fork.Length..mm., na.rm=TRUE),
+            fl.max=max(Fork.Length..mm., na.rm=TRUE))
+# which records are missing Fork Length
+fish[ is.na(fish$Fork.Length..mm.),]
+
 
 if(target.species != 'ALL'){
    catch.summary <- catch.summary[ catch.summary$Species.Code %in% target.species,]

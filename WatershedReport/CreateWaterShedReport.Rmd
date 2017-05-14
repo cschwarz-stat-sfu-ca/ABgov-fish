@@ -3,16 +3,16 @@ title: "Creating a draft Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  pdf_document:
-    number_sections: yes
   html_document:
+    number_sections: yes
+  pdf_document:
     number_sections: yes
 ---
 
 ```{r setup1, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-Version <- '2017-05-05'
+Version <- '2017-05-12'
 ```
 # Creating a draft Watershed Assessment Report
 ## Introduction
@@ -329,7 +329,7 @@ This code fragment checks that the workbook exists and then calls a function to 
 if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found ')) 
 
 # read the sheet from the workbook   
-cpue <- read.FWIS.workbook( 
+fish <- read.FWIS.workbook( 
         workbookName  =workbookName,   
         sheetName     =sheetName,   
         target.species=target.species)   
@@ -343,7 +343,7 @@ This fragment checks that the _csv_ file exists and then calls a function to rea
 if(!file.exists(csvfilename))stop(paste("File ",csvfilename,' not found ')) 
 
 # read the sheet from the workbook   
-cpue <- read.FWIS.workbook.csv(    # notice the suffix on the function call
+fish <- read.FWIS.workbook.csv(    # notice the suffix on the function call
         csvfilename,   
         sheetName     =sheetName,   
         target.species=target.species)   
@@ -429,7 +429,7 @@ csvfilename  = file.path("Data","Quirk Creek.csv")
 #if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
-#cpue <- read.FWIS.workbook(
+#fish <- read.FWIS.workbook(
 #        workbookName  =workbookName,
 #        sheetName     =sheetName,
 #        target.species=target.species)
@@ -438,24 +438,49 @@ csvfilename  = file.path("Data","Quirk Creek.csv")
 # Check that  FWIS files exists
 if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
 
-cpue <- read.FWIS.workbook.csv(
+fish <- read.FWIS.workbook.csv(
         csvfilename,
         target.species=target.species)
 
 ```
 
 #### Check and edit the data
+The fish length data is used to create three data frames used in subsequent analyses.
+
+1. _Inventory_ data frame which consists of one record per _Inventory.Survey.ID_ with information on the location
+of the inventory, the distance sampled, the time sampled, etc. 
+
+2. _Catch.Summary_ data frame which consists of one record per Location per year with the catch per 300 m computed.
+Value of 0 are imputed for species counts in inventories where a species was not captured.
+
+3. _Fish_ data frame with information on individual fish measurements. 
+
 The next sections of code creates summary tables to check the data (e.g. invalid species code, missing species code);
 create cross-tabulations by years collected, the type of equipment used (e.g., backpack electrofishing) etc. Here is where you 
-can exclude data, for example, from angling surveys that are not amenable to the CPUE computations. Some of the
-output is shown below:
+can exclude data, for example, from angling surveys that are not amenable to the CPUE computations. 
+
+**It is important that you review the output of these sections carefully before creating the summary report to
+ensure that all data has been captured without error**. Some common errors are:
+
+* Location data (UTM/TTM Easting/Northing) not consistent across years. The combination of the UTM.TTM Easting/Northing
+is used to define a location so if these differ by 1 m, it will be assumed that a new location was sampled. 
+
+* Species codes missing
+
+* Missing years of data
+
+Ideally, the
+original FWIS database should be updated to correct these errors, but they can corrects on the fly in this code. 
+
+You can work your way through the code in the chunk, line by line, to examine the output as needed.
+Some of the output from the data screening is shown below:
 
 ```{r  echo=TRUE}
 # what years are present in this workbooks?
-xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Year, data=fish, exclude=NULL, na.action=na.pass)
 
 # what species are present in this workbook
-xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
 
 ```
 
@@ -463,31 +488,31 @@ xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
 
 # After reading in the data, you should check  basic statistics such as the years
 # measurements are taken, the Location names are spelled consistently, etc
-xtabs(~Activity.Date+Inventory.Survey.ID, data=cpue, exclude=NULL, na.action=na.pass)
-unique(cpue[,c("Activity.Date","Inventory.Survey.ID")])
+xtabs(~Activity.Date+Inventory.Survey.ID, data=fish, exclude=NULL, na.action=na.pass)
+unique(fish[,c("Activity.Date","Inventory.Survey.ID")])
 
 
-xtabs(~LocationTTM+Year,      data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year,      data=fish , exclude=NULL, na.action=na.pass)
 # are there any dates that are invalid
-cpue[ is.na(cpue$Year),]
+fish[ is.na(fish$Year),]
 
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
-cpue[ is.na(cpue$Species.Code) | cpue$Species.Code=="",]
+xtabs(~Species.Code + Year,  data=fish , exclude=NULL, na.action=na.pass)
+fish[ is.na(fish$Species.Code) | fish$Species.Code=="",]
 # remove records with blank species codes
-dim(cpue)
-cpue <- cpue[ !(is.na(cpue$Species.Code) | cpue$Species.Code==""),]
-dim(cpue)
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+dim(fish)
+fish <- fish[ !(is.na(fish$Species.Code) | fish$Species.Code==""),]
+dim(fish)
+xtabs(~Species.Code + Year,  data=fish , exclude=NULL, na.action=na.pass)
 ```
 
 Here we remove all non-electrofishing survey types:
 ```{r echo=TRUE, include=TRUE}
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
 # Remove all non-electrofishing survey types
-dim(cpue)
-cpue <- cpue[ cpue$Survey.Type %in% c("Electrofishing"),]
-dim(cpue)
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+dim(fish)
+fish <- fish[ fish$Survey.Type %in% c("Electrofishing"),]
+dim(fish)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
 ```
 
 Data editing proceeds untils you are satisfied that all of the data should be 
@@ -495,36 +520,34 @@ included in the subsequent analyses.
 
 ```{r echo=FALSE, include=FALSE}
 # Check the equipment type field
-xtabs(~Equipment.Type + Year,    data=cpue , exclude=NULL, na.action=na.pass)
-xtabs(~Equipment.Type + Survey.Type, data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Equipment.Type + Year,    data=fish , exclude=NULL, na.action=na.pass)
+xtabs(~Equipment.Type + Survey.Type, data=fish, exclude=NULL, na.action=na.pass)
 
 
 # Check the fork length field
-plyr::ddply(cpue, c("Species.Code"), plyr::summarize, 
+plyr::ddply(fish, c("Species.Code"), plyr::summarize, 
             nfish=length(Fork.Length..mm.),
             nmiss=sum(is.na(Fork.Length..mm.)),
             fl.min=min(Fork.Length..mm., na.rm=TRUE),
             fl.max=max(Fork.Length..mm., na.rm=TRUE))
 # which records are missing Fork Length
-cpue[ is.na(cpue$Fork.Length..mm.),]
+fish[ is.na(fish$Fork.Length..mm.),]
 
 
 # check the Distance and time fields
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Distance..m., data=fish, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=fish, exclude=NULL, na.action=na.pass)
 
 # impute a distance field
-cpue$Distance..m.[ is.na(cpue$Distance..m.)] <- 100
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+fish$Distance..m.[ is.na(fish$Distance..m.)] <- 100
+xtabs(~Distance..m., data=fish, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=fish, exclude=NULL, na.action=na.pass)
 
-xtabs(~Inventory.Survey.ID+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Inventory.Survey.ID+Distance..m., data=fish, exclude=NULL, na.action=na.pass)
 
-xtabs(~Time..s.,     data=cpue, exclude=NULL, na.action=na.pass)# remove data where no distance or time
+xtabs(~Time..s.,     data=fish, exclude=NULL, na.action=na.pass)# remove data where no distance or time
 
 
-# check the counts by species
-xtabs(~Species.Code+Total.Count.of.Species.by.SurveyID, data=cpue, exclude=NULL, na.action=na.pass)
 ```
 
 #### Modifying the introductory text.
@@ -582,8 +605,8 @@ the default zoom factor gives the following map:
 
 ```{r  echo=TRUE, include=TRUE,fig.height=3}
 # Extract the min/max of lat/long and make slightly larger to try and capture entire map
-lat  <- range(cpue$Latitude,  na.rm=TRUE)
-long <- range(cpue$Longitude, na.rm=TRUE)
+lat  <- range(fish$Latitude,  na.rm=TRUE)
+long <- range(fish$Longitude, na.rm=TRUE)
 # Exapnd these slighly
 lat  <- lat + c(-1,1)* (lat[2]-lat[1])/5
 long <- long+ c(-1,1)* (long[2]-long[1])/5
@@ -598,9 +621,9 @@ google.map <- get_map(boundaries, maptype="satellite",  source="google") #, zoom
 my.map <- ggmap(google.map)
 
 # Exract the sampling points
-stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+stations <- unique( fish[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
 plot1 <- my.map +
-         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", fish$WatershedName[1],sep=""))+
          theme(plot.title = element_text(size = 8))+  # change text size for title
          geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
                     position=position_jitter(h=.0015, w=.0015) )+
@@ -620,9 +643,9 @@ google.map <- get_map(boundaries, maptype="satellite",  source="google", zoom=13
 my.map <- ggmap(google.map)
 
 # Extract the sampling points
-stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+stations <- unique( fish[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
 plot1 <- my.map +
-         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", fish$WatershedName[1],sep=""))+
          theme(plot.title = element_text(size = 8))+  # change text size for title
          geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
                     position=position_jitter(h=.0015, w=.0015) )+
@@ -647,7 +670,7 @@ in the usual way:
 
 ```{r FishSummaryTable10, echo=TRUE, message=FALSE, warning=FALSE}
 # Comput the summary statstics for each species by year
-fish.stat <- plyr::ddply(cpue, c("Species.Code"), plyr::summarize,
+fish.stat <- plyr::ddply(fish, c("Species.Code"), plyr::summarize,
                    nfish = length(Fork.Length..mm.),
                    fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
                    fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
@@ -677,7 +700,7 @@ and then the _pandoc.table_ creates the output to be rendered
 pandoc.table(fish.stat,
              caption=paste("Table ",tab.fishsummary,
                            ". Summary statistics on species of fish captured in ",
-                           cpue$WatershedName[1], sep=""),
+                           fish$WatershedName[1], sep=""),
              justify='lrrrr',
              split.cells=c(1,1,1,1,1))
 ```

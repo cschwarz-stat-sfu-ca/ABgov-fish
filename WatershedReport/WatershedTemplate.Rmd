@@ -3,15 +3,15 @@ title: "Your Favorite Watershed - Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
+    toc: yes
   pdf_document:
     number_sections: yes
     toc: yes
   html_document:
     number_sections: yes
-    toc: yes
-  word_document:
-    fig_caption: yes
-    reference_docx: WatershedTemplate-STYLE.docx
     toc: yes
 ---
 
@@ -86,93 +86,149 @@ workbookName = file.path('Data','Quirk Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 
+
+survey.type.wanted <- tolower(c('Electrofishing'))  # make sure spelling is correct!
+
 # CHoose one of the following code fragments, depending if JAVA is working or not.
 #  If xlxs package is working
 # Check that  FWIS files exists
-#if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
-#cpue <- read.FWIS.workbook(
-#        workbookName  =workbookName,
-#        sheetName     =sheetName,
-#        target.species=target.species)
+fish <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
 
 # Otherwise read using csv
 # Check that  FWIS files exists
-if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+#if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+#
+#fish <- read.FWIS.workbook.csv(
+#        csvfilename,
+#        target.species=target.species)
 
-cpue <- read.FWIS.workbook.csv(
-        csvfilename,
-        target.species=target.species)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(fish)
+fish <- fish[ tolower(fish$Survey.Type) %in% survey.type.wanted,]
+dim(fish)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
 
 
-# check that things seem to be ok so far
-head(cpue)
+# we need to create 3 files (corresponding to 3rd normal forms for relational tables)
+# for further processing
+#  (a) Inventory records - when and where was an inventory taken
+#          watershedName Year Location Inventory.Survey.ID
+# 
+#  (b) Catch Summary - how many fish by species were captured. 
+#      We expand (a) to include catch including 0 catch for all species seen during any inventory
+#          WatershedName Year Location Inventory.Survey.Id  Distance Time Species.Code Catch
+# 
+#  Cc) Fish length records - records for fish actually captured and measured this is basically the FWIS data readin
+#          WatershedName Year Location Inventory.Survey.ID  Species.Code Fork.Length..m. 
+
+#---------------------------------------
+# Get the inventory records 
+inventory <- plyr::ddply(fish, c("Inventory.Survey.ID"), function(x){
+    # just pull out the first record and drop all of the fish information
+    inventory <- x[1,, drop=FALSE]
+    drop.columns <- c("Angler.Count","Pass.Number","Captured.Count","Total.Count.of.Species.by.SurveyID",
+                      "Species.Code","Species.Common.Name","Weight..g.","Fork.Length..mm.",
+                      "Total.Length..mm.","Gender","Age")
+    inventory <- inventory[, !names(inventory) %in% drop.columns]
+    as.data.frame(inventory)
+})
+
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(inventory)
+inventory <- inventory[ tolower(inventory$Survey.Type) %in% survey.type.wanted,]
+dim(inventory)
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+
+# Check the inventory records to make sure that everything is consistent
+# 
+inventory[,c("WatershedName","Year","Activity.Date","Inventory.Survey.ID")]
 
 # what years are present in this workbooks?
-xtabs(~Year, data=cpue, exclude=NULL, na.action=na.pass)
+xtabs(~Year, data=inventory, exclude=NULL, na.action=na.pass)
 
-# what species are present in this workbook
-xtabs(~Species.Code, data=cpue, exclude=NULL, na.action=na.pass)
-
-# After reading in the data, you should check  basic statistics such as the years
-# measurements are taken, the Location names are spelled consistently, etc
-xtabs(~Activity.Date+Inventory.Survey.ID, data=cpue, exclude=NULL, na.action=na.pass)
-unique(cpue[,c("Activity.Date","Inventory.Survey.ID")])
-
-
-xtabs(~LocationTTM+Year,      data=cpue , exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year,      data=inventory , exclude=NULL, na.action=na.pass)
 # are there any dates that are invalid
-cpue[ is.na(cpue$Year),]
+inventory[ is.na(inventory$Year),]
 
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
-cpue[ is.na(cpue$Species.Code) | cpue$Species.Code=="",]
-# remove records with blank species codes
-dim(cpue)
-cpue <- cpue[ !(is.na(cpue$Species.Code) | cpue$Species.Code==""),]
-dim(cpue)
-xtabs(~Species.Code + Year,  data=cpue , exclude=NULL, na.action=na.pass)
+# check the Distance and time fields
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
 
+# impute a distance field
+inventory$Distance..m.[ is.na(inventory$Distance..m.)] <- 100
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
 
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
-# Remove all non-electrofishing survey types
-dim(cpue)
-cpue <- cpue[ cpue$Survey.Type %in% c("Electrofishing"),]
-dim(cpue)
-xtabs(~Survey.Type + Year,     data=cpue , exclude=NULL, na.action=na.pass)
+#xtabs(~Inventory.Survey.ID+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+
+xtabs(~Time..s.,     data=inventory, exclude=NULL, na.action=na.pass)# remove data where no distance or time
 
 
-# Check the equipment type field
-xtabs(~Equipment.Type + Year,    data=cpue , exclude=NULL, na.action=na.pass)
-xtabs(~Equipment.Type + Survey.Type, data=cpue, exclude=NULL, na.action=na.pass)
+#---------------------------------------------------------------------------------------
+#  Create the catch summary
+# We first extract for each Inventory.Survey.ID, one record per species
+catch.summary <- plyr::ddply(fish, c("Species.Code","Inventory.Survey.ID"), plyr::summarize,
+                            Count        = mean(Total.Count.of.Species.by.SurveyID))
+# Any inventory with 0 counts for all species will have Species.Code = NA
+catch.summary[ is.na(catch.summary$Species.Code),]
+dim(catch.summary)
+catch.summary <- catch.summary[ !is.na(catch.summary$Species.Code),]
+dim(catch.summary)
 
+# Now we need to expand for each Inventory.Survey.ID the full set of species 
+# and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
+which.species <- unique(catch.summary$Species.Code)
+all.catch <- plyr::ddply(inventory, "Inventory.Survey.ID", function(x, species.list){
+     all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
+                                Species.Code       =species.list,
+                                stringsAsFactors=FALSE)
+     all.species
+}, species.list=which.species)
+catch.summary <- merge(catch.summary, all.catch, all=TRUE)
+catch.summary$Count[ is.na(catch.summary$Count)] <- 0
+catch.summary <- merge(catch.summary, inventory, all.x=TRUE)   # merge it back with inventory records get inventory infor
+
+catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
+                             Distance..m. = sum(Distance..m., na.rm=TRUE),
+                             Count        = sum(Count,        na.rm=TRUE),
+                             CPUE.300m    = Count / Distance..m. * 300)
+
+xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(Count~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
+
+#---------------------------------------------------------------------------------------
+#  Look at the fish records - only those fish that are measured are capture
+drop.columns <- c("Captured.Count", "Total.Count.of.Species.by.SurveyID")
+fish <- fish[, !names(fish) %in% drop.columns]
+
+# drop any record with Species.Code being blank because that inventory record had 0 fish captured
+dim(fish)
+# what species are present in this workbook
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+fish <- fish[!is.na(fish$Species.Code),]
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
 
 # Check the fork length field
-plyr::ddply(cpue, c("Species.Code"), plyr::summarize, 
+plyr::ddply(fish, c("Species.Code"), plyr::summarize, 
             nfish=length(Fork.Length..mm.),
             nmiss=sum(is.na(Fork.Length..mm.)),
             fl.min=min(Fork.Length..mm., na.rm=TRUE),
             fl.max=max(Fork.Length..mm., na.rm=TRUE))
 # which records are missing Fork Length
-cpue[ is.na(cpue$Fork.Length..mm.),]
-
-
-# check the Distance and time fields
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-
-# impute a distance field
-cpue$Distance..m.[ is.na(cpue$Distance..m.)] <- 100
-xtabs(~Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-
-xtabs(~Inventory.Survey.ID+Distance..m., data=cpue, exclude=NULL, na.action=na.pass)
-
-xtabs(~Time..s.,     data=cpue, exclude=NULL, na.action=na.pass)# remove data where no distance or time
-
-
-# check the counts by species
-xtabs(~Species.Code+Total.Count.of.Species.by.SurveyID, data=cpue, exclude=NULL, na.action=na.pass)
+fish[ is.na(fish$Fork.Length..mm.),]
 
 ```
 
@@ -228,26 +284,26 @@ as identified by the HUC Watersheds of Alberta system of classification system
 Within the study area, 
 **999999999**
 potential sampling locations were randomly 
-chosen using ArcGIS (ESRI, 2013) and R (R Core Team, 2015) 
+chosen using ArcGIS (ESRI, 2013) and R (R Core Team, 2017) 
 using generalized random tessellation stratified (GRTS) 
 sampling (Stevens and Olsen, 2004; Reilly, 2016). 
 Sites were further removed from consideration if they were observed or 
 strongly suspected to be dry or if there were access limitations that prevented crews from reaching the sites. 
-In total, `r length(unique(cpue$LocationTTM))` sites were sampled in the `r cpue$WatershedName[1]` watershed 
+In total, `r length(unique(fish$LocationTTM))` sites were sampled in the `r fish$WatershedName[1]` watershed 
 as shown on the 
 Figure `r  fig.map`.
 
 ```{r WatershedMap, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, dpi=300}
-#watershedplot <- ggplot2::ggplot(data=cpue, aes(x=Longitude,y=Latitude))+
-#   ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+#watershedplot <- ggplot2::ggplot(data=inventory, aes(x=Longitude,y=Latitude))+
+#   ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", inventory$WatershedName[1],sep=""))+
 #   theme(plot.title = element_text(size = 8))+  # change text size for title
 #   geom_point()+
 #   xlab("Longitude (Degrees)")+ylab("Latitude (Degrees)")
 #watershedplot
 
 # Extract the min/max of lat/long and make slightly larger to try and capture entire map
-lat  <- range(cpue$Latitude,  na.rm=TRUE)
-long <- range(cpue$Longitude, na.rm=TRUE)
+lat  <- range(inventory$Latitude,  na.rm=TRUE)
+long <- range(inventory$Longitude, na.rm=TRUE)
 # Exapnd these slighly
 lat  <- lat + c(-1,1)* (lat[2]-lat[1])/5
 long <- long+ c(-1,1)* (long[2]-long[1])/5
@@ -262,9 +318,9 @@ google.map <- get_map(boundaries, maptype="satellite",  source="google", zoom=11
 my.map <- ggmap(google.map)
 
 # Exract the sampling points
-stations <- unique( cpue[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+stations <- unique( inventory[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
 plot1 <- my.map +
-         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", cpue$WatershedName[1],sep=""))+
+         ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", inventory$WatershedName[1],sep=""))+
          theme(plot.title = element_text(size = 8))+  # change text size for title
          geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
                     position=position_jitter(h=.0015, w=.0015) )+
@@ -275,7 +331,7 @@ plot1
 
 
 The set of unique TTM co-ordinates for the plot above are:
-```{r TTMcoordinates, echo=FALSE}
+```{r TTMcoordinates, echo=FALSE, comment=NA}
 print(stations, row.names=FALSE)
 ```
 
@@ -298,9 +354,9 @@ habitat threats as part of Alberta’s Fish Sustainability Index (FSI)
 and evaluation of species recovery work. 
 
 # Results
-Fish and habitat sampling was conducted at `r length(unique(cpue$LocationTTM))`
-sites within the `r cpue$WatershedName[1]`
-(HUC `r cpue$HUC[1]`) from `r min(cpue$Activity.Date, na.rm=TRUE)` to `r max(cpue$Activity.Date, na.rm=TRUE)`.
+Fish and habitat sampling was conducted at `r length(unique(inventory$LocationTTM))`
+sites within the `r inventory$WatershedName[1]`
+(HUC `r inventory$HUC[1]`) from `r min(inventory$Activity.Date, na.rm=TRUE)` to `r max(inventory$Activity.Date, na.rm=TRUE)`.
 This watershed is found approximately 
 **999999999  km northwest from the city of Calgary**.
 
@@ -309,13 +365,13 @@ This watershed is found approximately
 tab.fishsummary   <-getTABNUM();
 ```
 
-There were `r length(unique(cpue$Species.Code))` species of fish were captured over this period and the mean fork length, 
+There were `r length(unique(fish$Species.Code))` species of fish were captured over this period and the mean fork length, 
 size range, and mean catch rates for all captured fish over this period are summarized in 
 Table `r tab.fishsummary`.
 
 ```{r FishSummaryTable10, echo=FALSE, message=FALSE, warning=FALSE, results="asis"}
 # Comput the summary statstics for each species by year
-fish.stat <- plyr::ddply(cpue, c("Species.Code"), plyr::summarize,
+fish.stat <- plyr::ddply(fish, c("Species.Code"), plyr::summarize,
                    nfish = length(Fork.Length..mm.),
                    fl.mean=round(mean(Fork.Length..mm., na.rm=TRUE)),
                    fl.min= round(min(Fork.Length..mm. , na.rm=TRUE)),
@@ -336,7 +392,7 @@ colnames(fish.stat) <- c(
     )
 pandoc.table(fish.stat,
              caption=paste("Table ",tab.fishsummary,". Summary statistics on species of fish captured in ",
-                           cpue$WatershedName[1], sep=""),
+                           fish$WatershedName[1], sep=""),
              justify='lrrrr',
              split.cells=c(1,1,1,1,1))
 
@@ -347,10 +403,10 @@ pandoc.table(fish.stat,
 Catch per unit effort (CPUE) was computed for each species for each year as follows:
 
 * The distance sampled (m) and count by species was extracted for each _Inventory Survey ID_.
+* Values of zero for the count were imputed for species not seen in an inventory.
 * The distance sampled and count by species were summed over multiple _Inventory Survey IDs_ for a location.
 A location was defined by the combination of TTM Easting and TTM Northing. 
 * The CPUE was computed as total count / total distance $\times$ 300 m to standardize to a per 300 m basis.
-
 
 A Bayesian analysis was used to 
 compute the posterior probability of belonging to each FIS Category based 
@@ -360,34 +416,7 @@ site-to-site random variation, and year-specific effects (process error)
 as described in Schwarz (2017).
 
 ```{r    echo=FALSE, message=FALSE, results="hide"}
-# We first extract for each Inventory.Survey.ID, one record per species
-catch.summary <- plyr::ddply(cpue, c("WatershedName","Species.Code","Inventory.Survey.ID","Year","LocationTTM"), plyr::summarize,
-                            Distance..m. = mean(Distance..m., na.rm=TRUE),
-                            Count        = mean(Total.Count.of.Species.by.SurveyID))
-# Now we need to expand for each Inventory.Survey.ID the full set of species 
-# and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
-which.species <- unique(catch.summary$Species.Code)
-all.catch <- plyr::ddply(catch.summary, "Inventory.Survey.ID", function(x, species.list){
-     all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
-                                Distance..m.       =x$Distance..m.[1],
-                                Year               =x$Year[1],
-                                LocationTTM        =x$LocationTTM[1],
-                                WatershedName      =x$WatershedName[1],
-                                Species.Code       =species.list,
-                                stringsAsFactors=FALSE)
-     all.species
-}, species.list=which.species)
-catch.summary <- merge(catch.summary, all.catch, all=TRUE)
-catch.summary$Count[ is.na(catch.summary$Count)] <- 0
 
-catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
-                             Distance..m. = sum(Distance..m., na.rm=TRUE),
-                             Count        = sum(Count,        na.rm=TRUE),
-                             CPUE.300m    = Count / Distance..m. * 300)
-
-xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
-xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
 
 ```
 
@@ -412,7 +441,7 @@ child.list <- c(
         'QC-SpeciesSubsection-BLTR.Rmd',
         'QC-SpeciesSubsection-BLBK.Rmd',
         'QC-SpeciesSubsection-CTTR.Rmd'
-       )
+        )
 ```
 
 ```{r child=child.list}
@@ -446,7 +475,7 @@ Environmental Systems Research Institute (ESRI). 2013.
 ArcGIS Desktop: Version 10.2. Redlands , CA: 
 Environmental Systems Research Institute.
 
-R Core Team. 2015. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL [(http://www.R-project.org/](http://www.R-project.org/).
+R Core Team. 201. R: A language and environment for statistical computing. R Foundation forStatistical Computing, Vienna, Austria. URL [(http://www.R-project.org/](http://www.R-project.org/).
 
 Mackay, W.C., G.R.\ Ash, H.J.\ Norris. 1990. Fish ageing methods for Alberta. R.L.\ & L. Environmental Services Ltd. 
 In assoc. with Alberta Fish and Wildlife Division and University of Alberta, Edmonton. 113 pp.
@@ -472,7 +501,7 @@ Alberta Sustainable Resource Development,	Fish and Wildlife Division. Edmonton, 
 
 Stevens, D.L., A.R.\ Olsen. 2004. 
 Spatially balanced sampling of natural resources. 
-Journal of the American Statistical Association 99(465):262-278.
+Journal of the American Statistical Association 99, 262-278.
 
 Watkins, O.B., S.C.\ Spencer. 2009. 
 Collection, preparation and ageing of walleye otoliths. 

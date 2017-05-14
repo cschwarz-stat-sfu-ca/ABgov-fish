@@ -341,7 +341,32 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
    
    fish}
 
+read.zero.catch <- function(workbookName=file.path("Data","No fish caught 04021001.xls"),
+                            sheetName="NO FISH CAUGHT"){
+   # read in the zero catch data base                            
+   zero.catch <- readxl::read_excel(workbookName, sheet=sheetName)
+   names(zero.catch) <- make.names(names(zero.catch))
 
+   zero.catch$Activity.Date <- as.Date(zero.catch$Activity.Date)
+   zero.catch$Year          <- as.numeric(format(zero.catch$Activity.Date, "%Y"))
+
+   # convert TTM.Easting and TTM.Northing to numeric values
+   zero.catch$TTM.Easting  <- as.numeric(zero.catch$TTM.Easting)
+   zero.catch$TTM.Northing <- as.numeric(zero.catch$TTM.Northing)
+   zero.catch$Longitude    <- as.numeric(zero.catch$Longitude)
+   zero.catch$Latitude     <- as.numeric(zero.catch$Latitude)
+ 
+   # create LocationTTM based on Easting/Northing values
+   # at the moment, no checking for locations that are "close"
+   
+   zero.catch$LocationTTM <- paste( "E.",zero.catch$TTM.Easting,"-","N.",zero.catch$TTM.Northing, sep="")
+   
+   # create Watershed Name using proper case
+   if(!'Waterbody.Official.Name' %in% names(zero.catch))stop("Missing Waterbody Official Name")
+   zero.catch$WatershedName <- stringr::str_to_title(zero.catch$Waterbody.Official.Name)
+
+   zero.catch
+}
 
 
 #--------------------------------------------------------------------
