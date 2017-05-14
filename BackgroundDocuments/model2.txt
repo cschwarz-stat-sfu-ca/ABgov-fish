@@ -1,0 +1,72 @@
+
+    ############################################################
+    # Input data
+    #      Ndata  - number of data points
+    #      Density- density for each data point
+    #      Site.num- site number for each data point (1....NSites)
+    #      Year.num- year number for each data point (1... Nyears)
+
+    ############################################################
+
+    # compute the number of years (1...) and number of sites
+data {
+       Nyears   <- max(Year.num)
+       Nsites   <- max(Site.num)
+     }    
+
+model {
+    
+    # compute the trend line
+    for(i in 1:Nyears){
+          log.median.trend[i] <- beta0 + beta1*i
+    }
+
+    # add the site-effects and year-effects to the trend
+    for(i in 1:Ndata){
+       log.median.data[i] <- log.median.trend[Year.num[i]] + 
+                     site.eff[Site.num[i]] +  
+                     year.eff[Year.num[i]]
+       Density[i] ~ dlnorm( log.median.data[i], tau)
+    }
+
+    # tau is 1/(sd.log * sd.log)
+    tau <- 1/(sd.log*sd.log)
+    sd.log ~ dunif(.05, 3)   # on the log-scale sd is proportion of the mean
+    
+    # priors for the intercept and slope
+    beta0 ~ dnorm(0, .001)
+    beta1 ~ dnorm(0, .001)
+
+    # random effect of Year 
+    for(i in 1:Nyears){
+          year.eff[i] ~ dnorm(0, tau.year.eff)
+    }
+    tau.year.eff <- 1/(sd.year.eff*sd.year.eff)
+    sd.year.eff  ~ dunif(.01,2)
+
+    # random effect of Sites
+    for(i in 1:Nsites){
+          site.eff[i] ~ dnorm(0, tau.site.eff)
+    }
+    tau.site.eff <- 1/(sd.site.eff * sd.site.eff)
+    sd.site.eff  ~ dunif(.01, 2)
+
+    # what is the probability that the trend is negative
+    p.beta1.lt.0 <- ifelse(beta1<0,1,0)
+
+   # derived variables.
+   for(i in 1:Nyears){
+      med.den.trend [i] <- exp(log.median.trend  [i])
+      med.den.data  [i] <- exp(log.median.data   [i])
+   }
+
+   # probability of being in a threshold category for trend line
+   for(i in 1:Nyears){
+      for(k in 1:NFSI){
+          prob.FSI.cat.trend[i,k] <- ifelse((med.den.trend[i] >= FSI.lower[k]) && 
+                                            (med.den.trend[i] <  FSI.upper[k]),1,0)
+          prob.FSI.cat.data [i,k] <- ifelse((med.den.data [i] >= FSI.lower[k]) && 
+                                            (med.den.data [i] <  FSI.upper[k]),1,0)
+      }
+   }
+}

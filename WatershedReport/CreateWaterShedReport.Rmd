@@ -7,6 +7,7 @@ output:
     number_sections: yes
   pdf_document:
     number_sections: yes
+    
 ---
 
 ```{r setup1, include=FALSE}
@@ -464,6 +465,9 @@ ensure that all data has been captured without error**. Some common errors are:
 
 * Location data (UTM/TTM Easting/Northing) not consistent across years. The combination of the UTM.TTM Easting/Northing
 is used to define a location so if these differ by 1 m, it will be assumed that a new location was sampled. 
+
+* Distance or timing data missing. These are needed to compute the CPUE. You may have to impute some values from previous years
+that were not recorded. Ideally, the FWIS data base should be updated.
 
 * Species codes missing
 

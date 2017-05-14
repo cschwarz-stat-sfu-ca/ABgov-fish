@@ -1,0 +1,411 @@
+---
+title: "Your Favorite Watershed - Stratification Choices"
+author: "Carl Schwarz"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+# Links for RMarkdown help
+
+# Information about RMarkdown is at: http://rmarkdown.rstudio.com
+
+# Chunk options      https://yihui.name/knitr/options/
+
+# Dealing with word templates and Rmarkdown
+#    http://stackoverflow.com/questions/41982700/how-to-properly-number-headings-in-word-from-a-rmarkdown-document
+#    http://rmarkdown.rstudio.com/articles_docx.html   
+#    http://rmarkdown.rstudio.com/word_document_format.html
+
+# Information on using ggmap is available at
+#    https://github.com/dkahle/ggmap/blob/master/README.md
+# You may need to intall the latest version (not available on CRAN) if you get the message about ggproto. 
+# Use 
+#    devtools::install_github("dkahle/ggmap")
+
+#    http://github.com/zoul/Finch/zipball/master/
+
+# Here we open the libraries needed and source any other code as needed
+knitr::opts_chunk$set(echo = TRUE)
+
+Version <- '2071-05-05'
+
+library(car)
+library(coda)
+library(ggmap)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(lmerTest)
+library(pander)
+library(plyr)
+library(readxl)
+library(reshape2)
+library(scales)
+library(stringr)
+
+source("functions.R")  # functions to read the FWIS workbook etc
+
+# Set Figure and Table number variables. DO NOT CHANGE these except at your peril
+# Get the figure or table number before the first time you reference it.
+.FIGNUM <- 0
+.TABNUM <- 0
+
+
+# Get the raw data and do editing. This won't appear in the report, but gives you 
+# an audit trail of what you did to the raw data before creating the rest of the
+# template
+
+target.species <- 'ALL'
+#target.species <- c("BKTR","BLTR","MNWH") # or you can select which species to include
+
+# Enter the workbook name and worksheet name containing the FWIS output
+
+workbookName = file.path('Data','Wampus Creek.xls')
+sheetName    = 'F&W'
+csvfilename  = file.path("Data","Wampus Creek.csv")
+
+workbookName = file.path('Data','Freeman HUC8.xls')
+sheetName    = 'F&W 2008 & 2015 '
+csvfilename  = file.path("Data", "Freeman HUC8.csv")
+
+workbookName = file.path('Data','Quirk Creek.xls')
+sheetName    = 'F&W'
+csvfilename  = file.path("Data","Quirk Creek.csv")
+
+
+survey.type.wanted <- tolower(c('Electrofishing'))  # make sure spelling is correct!
+
+# CHoose one of the following code fragments, depending if JAVA is working or not.
+#  If xlxs package is working
+# Check that  FWIS files exists
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+
+# read the sheet from the workbook
+fish <- read.FWIS.workbook(
+        workbookName  =workbookName,
+        sheetName     =sheetName,
+        target.species=target.species)
+
+# Otherwise read using csv
+# Check that  FWIS files exists
+#if(!file.exists(csvfilename))stop(paste("File ",csvfile,' not found '))
+#
+#fish <- read.FWIS.workbook.csv(
+#        csvfilename,
+#        target.species=target.species)
+
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(fish)
+fish <- fish[ tolower(fish$Survey.Type) %in% survey.type.wanted,]
+dim(fish)
+xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
+
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+
+# we need to create 3 files (corresponding to 3rd normal forms for relational tables)
+# for further processing
+#  (a) Inventory records - when and where was an inventory taken
+#          watershedName Year Location Inventory.Survey.ID
+# 
+#  (b) Catch Summary - how many fish by species were captured. 
+#      We expand (a) to include catch including 0 catch for all species seen during any inventory
+#          WatershedName Year Location Inventory.Survey.Id  Distance Time Species.Code Catch
+# 
+#  Cc) Fish length records - records for fish actually captured and measured this is basically the FWIS data readin
+#          WatershedName Year Location Inventory.Survey.ID  Species.Code Fork.Length..m. 
+
+#---------------------------------------
+# Get the inventory records 
+inventory <- plyr::ddply(fish, c("Inventory.Survey.ID"), function(x){
+    # just pull out the first record and drop all of the fish information
+    inventory <- x[1,, drop=FALSE]
+    drop.columns <- c("Angler.Count","Pass.Number","Captured.Count","Total.Count.of.Species.by.SurveyID",
+                      "Species.Code","Species.Common.Name","Weight..g.","Fork.Length..mm.",
+                      "Total.Length..mm.","Gender","Age")
+    inventory <- inventory[, !names(inventory) %in% drop.columns]
+    as.data.frame(inventory)
+})
+
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+# Remove all non-electrofishing survey types
+dim(inventory)
+inventory <- inventory[ tolower(inventory$Survey.Type) %in% survey.type.wanted,]
+dim(inventory)
+xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
+
+# Check the inventory records to make sure that everything is consistent
+# 
+inventory[,c("WatershedName","Year","Activity.Date","Inventory.Survey.ID")]
+
+# what years are present in this workbooks?
+xtabs(~Year, data=inventory, exclude=NULL, na.action=na.pass)
+
+xtabs(~LocationTTM+Year,      data=inventory , exclude=NULL, na.action=na.pass)
+# are there any dates that are invalid
+inventory[ is.na(inventory$Year),]
+
+# check the Distance and time fields
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+
+# impute a distance field
+inventory$Distance..m.[ is.na(inventory$Distance..m.)] <- 100
+xtabs(~Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+
+#xtabs(~Inventory.Survey.ID+Distance..m., data=inventory, exclude=NULL, na.action=na.pass)
+
+xtabs(~Time..s.,     data=inventory, exclude=NULL, na.action=na.pass)# remove data where no distance or time
+
+
+#---------------------------------------------------------------------------------------
+#  Create the catch summary
+# We first extract for each Inventory.Survey.ID, one record per species
+catch.summary <- plyr::ddply(fish, c("Species.Code","Inventory.Survey.ID"), plyr::summarize,
+                            Count        = mean(Total.Count.of.Species.by.SurveyID))
+# Any inventory with 0 counts for all species will have Species.Code = NA
+catch.summary[ is.na(catch.summary$Species.Code),]
+dim(catch.summary)
+catch.summary <- catch.summary[ !is.na(catch.summary$Species.Code),]
+dim(catch.summary)
+
+# Now we need to expand for each Inventory.Survey.ID the full set of species 
+# and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
+which.species <- unique(catch.summary$Species.Code)
+all.catch <- plyr::ddply(inventory, "Inventory.Survey.ID", function(x, species.list){
+     all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
+                                Species.Code       =species.list,
+                                stringsAsFactors=FALSE)
+     all.species
+}, species.list=which.species)
+catch.summary <- merge(catch.summary, all.catch, all=TRUE)
+catch.summary$Count[ is.na(catch.summary$Count)] <- 0
+catch.summary <- merge(catch.summary, inventory, all.x=TRUE)   # merge it back with inventory records get inventory infor
+
+catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
+                             Distance..m. = sum(Distance..m., na.rm=TRUE),
+                             Count        = sum(Count,        na.rm=TRUE),
+                             CPUE.300m    = Count / Distance..m. * 300)
+
+xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(Count~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
+xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
+
+```
+
+
+```{r eval=FALSE, echo=FALSE}
+# Refer to the cheat sheets for RMarkdown.
+
+# Common problems include:
+# - Don't add extra spaces after a periods before a new line. Otherwise the
+#   text will break at this point and not run together.
+```
+
+# Introduction
+The assignment of a watershed to the FSI category depends on the median CPUE estimated
+for that watershed and the uncertainty in the estimated median. The uncertainty
+in the estimated median in turn depends upon the variability in the CPUE values and
+the number of CPUE values measured in a particular year.
+
+In the case of a simple random sample, the uncertainty in the median can be easily
+computed. Let $Y$ represent the $log(CPUE)$. Then the $log(median)$ of the CPUE is estimated
+as the simple sample mean of the $log(CPUE)$, i.e. $\overline{Y}$. The uncertainty
+of $\overline{Y}$ is denoted as the standard error (SE) and is computed as $SE(\overline{Y})=s/\sqrt{n}$
+where $s$ is the sample standard deviation of $Y$ and $n$ is the sample size.
+
+In some cases, the uncertainty in the $\log(median)$ CPUE can be reduced by stratifying
+the CPUE. Two potential stratification variables are the stream order or the lower levels
+of the HUC classification (e.g. the watershed or sub-watershed levels).
+
+In order to compute a mean from a stratified design, on additonal piece of information is
+needed, namely the relative (population) weights of the strata. For example, the entire sub-basin
+could composed of 30, 20, and 10 streams of order 2, 3 and 4 respectively. Then the weights for the stream-order
+stratificaton are $30/60=0.5$; $20/50=0.333$; and $10/60=0.167$ respectively. Notice that the population
+weights do not have to correspond to the division by sample size, i.e., you could over/under sample
+in a stratum relative to its population weight.
+
+After stratification, let
+
+* $n_i$ be the observed sample size in stratum $i$, $i=1,...H$ where $H$ is the number of strata.
+
+* $\overline{Y}_i$ be the sample mean for stratum $i$,
+
+* $s_i$ be the sample standard deviation for stratum $i$, 
+
+* $SE_i$ be the standard error of the mean in stratum $i$ computed as $SE_i =i/\sqrt{n_i}$, and
+
+* $W_i$ be the population weight for stratum $i$.
+
+The overall mean is found as a weighted average of the stratum means:
+$$\overline{Y}_{overall} = W_1 \overline{Y}_1 + W_2 \overline{Y}_2 + ...$$
+The standard error of the overall mean is found as
+$$SE(\overline{Y}_{overall}) = \sqrt{W_1^2 SE_1^2 + W_2^2 SE_2^2 + ... }$$
+A stratification could lead to reductions in the uncertainty of the overall mean if the values within a stratum
+have a smaller standard deviation than values across strata, i.e. units within a strataum are homogeneous while
+units across strata are heterogeneous.
+
+How should units be allocated to strata? There are several possible methods, but the most common are:
+
+* Equal allocation where the total sample size is divided equally among the strata.
+
+* Proportional allocation where the total sample size is divided proportionally among the strata in
+the same proportion as the population weights. For example, if one stratum had a population weight ($W_i$)
+of 0.4, the 40% of the samples should be allocated to this stratum. In other words, larger strata
+receive more samples.
+
+* Optimal allocation where the total sample size is divided proportionally to the PRODUCT of the population
+weights and the population standard deviations, i.e .proportion to $W_i S_i$ where $S_i$ is the population
+standard deviation. Normally, the population standard deviation is unknown, but can be estimated from
+the respective stratum sample standard deviation ($s_i$). In other words, large and more variable 
+strata receive more samples.
+
+In most cases, moving from an equal allocation to a proportional allocation provides a large improvement
+in precision while moving to the optimal allocation only provides a further (modest) improvement.
+
+It is straight forward to compare the efficacy of alternate stratification methods by finding 
+the characteristics of the stratum (mean, standard deviation), dividing a proposed sample by the
+various allocation methods (equal, proportional or optimal) and then comparing the resulting standard
+errors of the mean.
+
+# Extracting the information 
+**CAUTION: The FWIS output format does not yet contain the needed information to examine
+different stratifications.**
+
+Consequently, this template will use a summary data file especially created for
+this example. This data was extracted from the Nordegg River and contains information on the
+HUC10 and Stream Order of a number of sampling points selected in 2016.
+
+The data are read in the usual manner. We then find the log(CPUE) and add a small constant to
+avoid taking log(0):
+```{r read.nordegg, echo=TRUE}
+catch.summary <- readxl::read_excel(file.path("Data","Nordegg2016SiteCUESummary_streamorder_CS.xlsx"),
+                                    sheet="Sheet1", skip=1)
+names(catch.summary) <- make.names(names(catch.summary))
+range(catch.summary$BKTR_100m..recomputed.)
+
+offset <- 0.5 * min(catch.summary$BKTR_100m..recomputed.[catch.summary$BKTR_100m..recomputed.>0])
+offset
+
+catch.summary$logCPUE <- log(catch.summary$BKTR_100m..recomputed. + offset)
+```
+Stratification by HUC10 code and Stream Order will be considered. The stratum statistics are:
+```{r stratum.stat, echo=FALSE, results='asis'}
+# when the proper catch summary data is available, this is where you would modify
+# the code to extract the HUC10 and/or stream order from the actual data.
+
+huc.stat <- plyr::ddply(catch.summary, "HUC10", plyr::summarize,
+                          mean=mean(logCPUE),
+                          sd  =sd  (logCPUE))
+strorder.stat <- plyr::ddply(catch.summary, "STR_ORDER", plyr::summarize,
+                          mean=mean(logCPUE),
+                          sd  =sd  (logCPUE))
+
+sd.nostrat <- sd(catch.summary$logCPUE)
+
+
+pandoc.table(huc.stat,
+             caption="Stratum statistics for HUC stratification",
+             round=c(0,1,1),
+             justify='lrr')
+
+pandoc.table(strorder.stat,
+             caption="Stratum statistics for STREAM ORDER stratification",
+             round=c(0,1,1),
+             justify='lrr')
+
+```
+
+The FWIS databased likely does NOT include the stratum population weights. You will have to extract
+this from a GIS analysis of the watershed and then enter the weights here. I've used arbitrary values
+as an illustration of the methods and results.
+```{r stratum.weights, echo=FALSE, results='asis'}
+huc.pop.weights<- data.frame(HUC10=as.character(huc.stat$HUC10),
+                             W = c(0.23,	0.56,	0.21), stringsAsFactors=FALSE)
+strorder.pop.weights <- data.frame(STR_ORDER=strorder.stat$STR_ORDER,
+                                   W=c(0.05,	0.54,	0.31,	0.10), stringsAsFactors=FALSE)
+pandoc.table(huc.pop.weights,
+             caption='Population weights for HUC stratification',
+             justify='lr',
+             round=c(0,2))
+
+pandoc.table(strorder.pop.weights,
+             caption='Population weights for STREAM ORDER stratification',
+             justify='lr',
+             round=c(0,2))
+```
+
+```{r merge, echo=FALSE}
+huc.stat      <- merge(huc.pop.weights,      huc.stat)
+strorder.stat <- merge(strorder.pop.weights, strorder.stat)
+```
+
+# Comparing precision under no stratification and potential stratifications.
+Using an arbitary total sample size of 100 for convenience, we
+allocate this total sample size among the strata using the equal, proportional, or optimal allocation:
+```{r allocate, echo=FALSE,results="asis"}
+totaln <- 100
+# Allocate sample size for HUC
+huc.stat$n.equal <- totaln/nrow(huc.stat)
+huc.stat$n.prop  <- totaln*huc.stat$W
+huc.stat$n.opt   <- totaln*huc.stat$W*huc.stat$sd / sum(huc.stat$W*huc.stat$sd)
+
+strorder.stat$n.equal <- totaln/nrow(strorder.stat)
+strorder.stat$n.prop  <- totaln*strorder.stat$W
+strorder.stat$n.opt   <- totaln*strorder.stat$W*strorder.stat$sd / sum(strorder.stat$W*strorder.stat$sd)
+
+pandoc.table(huc.stat,
+             caption="Allocations for HUC stratification",
+             round=c(0,2,1,1,1,1,1),
+             justify='lrrrrrr')
+
+pandoc.table(strorder.stat,
+             caption="Allocations for STREAM ORDER stratification",
+             round=c(0,2,1,1,1,1,1),
+             justify='lrrrrrr')
+
+```
+
+Finally we compute the SE of the grand mean using the above formula
+for each allocation:
+```{r compute.se, echo=FALSE}
+huc.SE <- data.frame(Strat.method = "HUC",
+                 SE.no.strat=sqrt(sd.nostrat^2/sum(huc.stat$n.equal)),
+                 SE.equal= sqrt(sum(huc.stat$W^2*huc.stat$sd^2/huc.stat$n.equal)),
+                 SE.prop = sqrt(sum(huc.stat$W^2*huc.stat$sd^2/huc.stat$n.prop )),
+                 SE.opt  = sqrt(sum(huc.stat$W^2*huc.stat$sd^2/huc.stat$n.opt  )), stringsAsFactors=FALSE)
+
+strorder.SE <- data.frame(Strat.method="Stream Order",
+                 SE.no.strat=sqrt(sd.nostrat^2/sum(strorder.stat$n.equal)),
+                 SE.equal= sqrt(sum(strorder.stat$W^2*strorder.stat$sd^2/strorder.stat$n.equal)),
+                 SE.prop = sqrt(sum(strorder.stat$W^2*strorder.stat$sd^2/strorder.stat$n.prop )),
+                 SE.opt  = sqrt(sum(strorder.stat$W^2*strorder.stat$sd^2/strorder.stat$n.opt  )), stringsAsFactors=FALSE)
+
+```
+Now we can compare the forecasted standard errors under the two potential stratication
+variables and the three potential qllocation strategies as summarized below:
+```{r final.table, ehco=FALSE, results="asis", echo=TRUE}
+res <-rbind(huc.SE, strorder.SE)
+pandoc.table( res,
+              caption='Comparing final SE under different stratification and allocations',
+              round=c(0,2,2,2,2),keep.trailing.zeros=TRUE,
+              justify='lrrrr')
+
+```
+
+For this example, the two stratification methods appears to give similar final standard errors. There is some improvement
+from stratifying over computing the mean with no stratification.

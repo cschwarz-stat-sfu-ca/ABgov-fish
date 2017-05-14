@@ -3,7 +3,9 @@ title: "Alberta Environment FSI Workshop"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  beamer_presentation: default
+  beamer_presentation:
+    includes:
+      in_header: Figures/beamer-options.tex
   ioslides_presentation: default
 ---
 
@@ -12,14 +14,14 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 
-## Ojectives
+# Objectives 
 
 - Create a draft Watershed Assessment Report
 - How many sample locations do I need in the watershed to detect a trend?
-- What is optimal way to stratify my samples in a watershed
+- What is impact of stratification of samples in a watershed
 
 
-## Workflow
+# Workflow
 
 - use _R_ and _RMarkdown_ to do computations and create _MSWord_ (or other format) draft
 documents that can be edited to create final report
@@ -27,7 +29,7 @@ documents that can be edited to create final report
 ![](Figures/Knitting.png)
 
 
-## Why this approach?
+# Why this approach?
 
 - Reproducible output. 
 - Final output and data are easy to syncronize.
@@ -40,7 +42,7 @@ unless you go to the next level of _RMarkdown_ using _LaTeX_ (a professional typ
 
 
 
-## Computer Preparation
+# Computer Preparation
 
 - Install _R_ and associated packages.  
   Caution with _ggmaps_ as current version doesn't talk nicely with Google Maps. 
@@ -54,13 +56,19 @@ unless you go to the next level of _RMarkdown_ using _LaTeX_ (a professional typ
   We will use Quirk Creek as an example.
   
 - Download material from GitHub   
-  Visit <<https://github.com/cschwarz-stat-sfu-ca/ABgov-fish>  
+  Visit <https://github.com/cschwarz-stat-sfu-ca/ABgov-fish>  
   Download zip file.  
   Unzip zip file and discard zip file. 
-  
-## Watershed Assessment
 
-Ojective: Go from:
+
+-----
+
+Watershed Assessment
+
+  
+# Watershed Assessment
+
+Take this:
 ```{r, out.height="5in",echo=FALSE, include=FALSE, message=FALSE, warning=FALSE, fig.align='center',dpi=300}
 library(ggplot2)
 library(coda)
@@ -68,23 +76,6 @@ library(pander)
 library(plyr)
 library(R2jags)  # used for call to JAGS
 library(reshape2)
-
-# define table and figure numbering
-# Keep track of figure and table numbers. Do not modify the global variables .FIGNUM and .TABNUM
-getFIGNUM <- function(){
-    .FIGNUM <<- .FIGNUM +1
-    .FIGNUM
-}
-
-getTABNUM <- function(){
-  .TABNUM <<- .TABNUM +1
-  .TABNUM
-}
-
-.FIGNUM <- 0
-.TABNUM <- 0
-
-
 
 
 # Get the FSI category boundaries
@@ -202,7 +193,7 @@ raw.trend.log <- ggplot2::ggplot(data=pass.melt, aes(x=Year, y=log(Density+.1), 
 raw.trend
 ```
 
-## Watershed Assessment II
+# Watershed Assessment II
 ```{r trend.model, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 cat(file="model2.txt", "
     ############################################################
@@ -440,21 +431,21 @@ fsi.plot.data
 But:
 - Year-specific effects add extra layer of variation
 
-## Watershed Assessment III
+# Watershed Assessment III
 Estimate the underlying trend:
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
 postplot
 ```
 
 
-## Watershed Assessment IV
+# Watershed Assessment IV
 Base FSI classification based on underlying trend:
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
 fsi.plot.trend
 ```
 
 
-## Probabilistic assignment to FSI categories
+# Probabilistic assignment to FSI categories
 
 ```{r baseplot, echo=FALSE, fig.height=3, fig.width=5, out.height="4in", dpi=300}
 initplot <- ggplot2::ggplot( data=cpue, aes(x=Stream, y=cpue))+
@@ -553,7 +544,7 @@ results <- jags(
 
 ```
 
-## Probabilistic assignment to FSI categories
+# Probabilistic assignment to FSI categories
 
 Generated values for median from Stream 1:
 ```{r stream1.post.samples, echo=FALSE, comment=NA}
@@ -569,7 +560,7 @@ Create a 0/1 indicator variable for each FSI category:
                                     [grepl("prob.FSI",colnames(results$BUGSoutput$sims.matrix))]]
 ```
 
-## Probabilistic assignment to FSI categories
+# Probabilistic assignment to FSI categories
 
 Repeat for many thousands of simulations:
 ```{r stream1.mean.post2, echo=FALSE, comment=NA}
@@ -581,7 +572,7 @@ cat("Probability of Stream 1 in each FSI category")
 temp1
 ```
 
-## Probabilistic assignment to FSI categories
+# Probabilistic assignment to FSI categories
 
 Similarly for Stream 2:
 
@@ -619,7 +610,7 @@ temp2
 ```
 
 
-## Probabilistic assignment to FSI categories
+# Probabilistic assignment to FSI categories
 Create categories from the probabilties
 
 ```{r fsi.cat.both, echo=FALSE, fig.height=3, fig.width=5, dpi=300}
@@ -647,7 +638,13 @@ fsi.plot <- ggplot(data=plotdata, aes(x=Stream, y=prob, fill=FSI.cat2))+
 fsi.plot
 ```
 
-## Role of process error (year-specific effects)
+
+----
+
+Year-Specific Effects (Process Error)
+
+
+# Role of process error (year-specific effects)
 Year-specific effects add extra variaton to the assessment
 
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', dpi=300}
@@ -656,7 +653,7 @@ fsi.plot.data
 
 
 
-## What are year-specific effects (process error)?
+# What are year-specific effects (process error)?
 ```{r noprocess, echo=FALSE, fig.height=4, fig.width=6, warning=FALSE, message=FALSE}
 
 library(ggplot2)
@@ -686,7 +683,7 @@ plot1 <- ggplot2::ggplot(data=plotdata, aes(x=Year, y=logCPUE))+
 plot1
 ```
 
-## What are year-specific effects (process error)?
+# What are year-specific effects (process error)?
 ```{r process, echo=FALSE, fig.height=4, fig.width=6, warning=FALSE, message=FALSE}
 SD.Process <- .3
 
@@ -707,7 +704,7 @@ plot2
 
 ```
 
-## Impacts of year-specific effects (process error)
+# Impacts of year-specific effects (process error)
 ```{r processtrend, fig.height=6, fig.width=6, echo=FALSE, warning=FALSE, message=FALSE}
 # Create a plot illustrating the impact of process error
 
@@ -757,7 +754,7 @@ plot1 <- ggplot( data=plotdata, aes(x=Year, y=logit.psi.obs))+
 plot1
 ```
 
-## Fitting trend accounting for year-specific effects (process error)
+# Fitting trend accounting for year-specific effects (process error)
 
 Linear mixed model accounting for yearly trend and yearly process error:
 ```{r mixedfit, echo=TRUE}
@@ -767,14 +764,14 @@ summary(mixed.fit)$coefficients
 VarCorr(mixed.fit)
 ```
 
-## Fit trend on log(CPUE) scale
+# Fit trend on log(CPUE) scale
 Similar LMM fit but also add SITE effects:
 
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
 postplot
 ```
 
-## Fit trend on log(CPUE) scale
+# Fit trend on log(CPUE) scale
 Assign FSI category based on variation of TREND line 
 
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
@@ -782,12 +779,12 @@ fsi.plot.trend
 ```
 
 
-##
+----
 
 Creating draft watershed assessment report
 
 
-## Workflow
+# Draft watershed assessment report: Workflow
 - Install _R_, _RStudio_, _JAGS_ and associated packages
 - Create working directory for your work.
 - Download files from  <https://github.com/cschwarz-stat-sfu-ca/ABgov-fish> into working directory and unzip
@@ -798,7 +795,7 @@ Creating draft watershed assessment report
 - View _xx-WatershedTemplate.docx_ until satisfied.
 - Edit _docx_ file for finishing touches.
 
-## RMarkdown: Combining _R_ and text into a single report.
+# RMarkdown: Combining _R_ and text into a single report.
 
 Types of chunks:
 
@@ -810,7 +807,7 @@ with _R_ code in between.
 - Text that includes results of _R_ expressions
 
 
-## Using _RMarkdown_
+# Using _RMarkdown_
 
 - Run complete chunks using the *Run* menu item in _RStudio_.
 
@@ -820,7 +817,7 @@ with _R_ code in between.
   <http://rmarkdown.rstudio.com>  
   <https://yihui.name/knitr/options/>
   
-## Basic steps to creating draft watershed assessment report
+# Basic steps to creating draft watershed assessment report
 
 - Carefully go through first _R_ code chunk ensuring that data has been entered
 properly, and making sure that you select proper subset, clean up any coding errors, etc
@@ -833,13 +830,17 @@ properly, and making sure that you select proper subset, clean up any coding err
 
 - Finally _knit_ everything together into final _MSWord_ document.
 
-## Exercise: Quirk Creek Watershed Assessment
+# Exercise: Quirk Creek Watershed Assessment
 
 Refer to detailed document in the WatershedReport directory.
 
-## How many years do I need to sample to detect a trend?
 
-## Detecting a trend
+
+----
+
+How many years do I need to sample to detect a trend?
+
+# Detecting a trend
 
 Power to detect a trend depends on
 
@@ -861,7 +862,7 @@ The year-specific effects standard deviation is OFTEN THE LIMITING factor and CA
 
 * Not nessary to sample large number of sites in each year.
 
-## Detecting a trend - workflow
+# Detecting a trend - workflow
 
 - Read in and edit FWIS data as before
 - Estimate the variance components (standard deviations)
@@ -869,10 +870,70 @@ The year-specific effects standard deviation is OFTEN THE LIMITING factor and CA
 - Plot the data
 - Be demoralized.
 
-## Exercise: Quirk Creek Power and Sample Size
+# Exercise: Quirk Creek Power and Sample Size
 
 Refer to detailed document in TrendPowerAnalysis directory.
 
+----
 
+Impact of stratification
+
+
+# Impact of different types of stratification
+Uncertainty in estimating median in a year may be due to other variables such as
+ 
+* HUC Classification
+* Stream Order
+* Other variables
+
+If this uncertainty could be reduced, it may improve the FSI categorization
+
+BUT
+
+* Year-specific effect (process error) may render this moot.
+
+# Estimating uncertainty (theory)
+
+* SRS (simple random sample)
+    + $Y_i = log(CPUE)$.
+    + $s$ is the overall standard deviation.
+    + $SE(\overline{Y})=s/\sqrt{n}$
+
+* Stratified SRS
+    + $\overline{Y}_h$ mean in stratum $h$
+    + $s_h$ standard deviation in stratum $h$
+    + $n_h$ sample size in stratum $h$
+    + $SE(\overline{Y}_h)=s_h/\sqrt{n_h}$ SE in stratum $h$
+    + $W_h$ population level stratum weight
+    + $\overline{Y}_{overall} = W_1 \overline{Y}_1 + W_2 \overline{Y}_2 + ...$
+    + $SE(\overline{Y}_{overall}) = \sqrt{W_1^2 SE_1^2 + W_2^2 SE_2^2 + ... }$
+
+
+# Sample allocation
+
+* Equal allocation: $n_h = n_{total} / H$ where $H$ is number of strata
+
+* Proportional allocation: $n_h = n_{total} \times W_h$
+
+* Optimal allocation $n_h = n_{total} \times \frac{W_h S_h}{W_1 S_1 + W_2 S_2 + ....}$.
+
+Most gains in precision occur moving from Equal to Proportional Allocation; moving to optimal allocation
+typically leads to smaller improvments
+
+# Stratification - Workflow
+
+* Read and summarize CPUE information. CAUTION. Current FWIS format does not include HUC10 or stream order
+* Find POPLATION WEIGHTS from GIS for each stratification option
+* Estimate $s_h$ for each stratum
+* Do trial allocaitons, say with $n_{tota}=100$
+* Estimate uncertainty in mean
+
+Is there a benefit from stratification vs. no stratification?  
+Is there much difference between two types of stratification?
+Is there much gain moving from Equal -> Proportional -> Optimal?
+
+----
+
+Exercise: Nordegg River stratification 
 
 
