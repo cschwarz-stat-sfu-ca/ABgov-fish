@@ -404,6 +404,8 @@ plotdata <- reshape2::melt(as.data.frame( results.cttr$BUGSoutput$sims.matrix[, 
                            value.name='med.density')
 plotdata$Year.num <- gsub("med.den.trend[","", plotdata$Year.num, fixed=TRUE)
 plotdata$Year.num <- as.numeric(gsub("]",  "", plotdata$Year.num, fixed=TRUE))
+# apply subsampling to reduce plot size
+plotdata <- plotdata[ runif(nrow(plotdata))< .1,]  # select 10% sample
 
 plotdata <- merge(plotdata, year.code)
 
@@ -419,6 +421,8 @@ postplot <- ggplot2::ggplot( data=meddata, aes(x=Year, y=med.density))+
   geom_hline(data=FSI.threshold[1:3,], aes(yintercept=lower), alpha=1, color="red")+
   ylim(0,150)
 #postplot
+ggsave(plot=postplot, file=file.path("Figures","postplot.png"),
+       h=4, w=6, units="in", dpi=300)
 
 ```
 
@@ -433,7 +437,10 @@ But:
 
 # Watershed Assessment III
 Estimate the underlying trend:
-```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
+
+![](Figures/postplot.png)
+
+```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300, eval=FALSE}
 postplot
 ```
 
@@ -767,7 +774,10 @@ VarCorr(mixed.fit)
 # Fit trend on log(CPUE) scale
 Similar LMM fit but also add SITE effects:
 
-```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300}
+
+![](Figures/postplot.png)
+
+```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', message=FALSE, warning=FALSE, dpi=300, eval=FALSE}
 postplot
 ```
 

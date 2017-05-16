@@ -1,6 +1,6 @@
 ```{r echo=FALSE}
 species.select <- "BKTR"
-Version <- '2017-05-05'
+Version <- '2017-05-17'
 ```
 
 ## `r species.select`

@@ -54,7 +54,7 @@ library(reshape2)
 library(scales)
 library(stringr)
 
-source("functions.R")  # functions to read the FWIS workbook etc
+source(file.path("..","CommonFiles","functions.R"))  # functions to read the FWIS workbook etc
 
 # Set Figure and Table number variables. DO NOT CHANGE these except at your peril
 # Get the figure or table number before the first time you reference it.
@@ -112,33 +112,30 @@ fish <- fish[ tolower(fish$Survey.Type) %in% survey.type.wanted,]
 dim(fish)
 xtabs(~Survey.Type + Year,     data=fish , exclude=NULL, na.action=na.pass)
 
-xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+# read the zero.catch records
+zero.catch <- read.zero.catch(survey.type.wanted)
 
 
 # we need to create 3 files (corresponding to 3rd normal forms for relational tables)
 # for further processing
 #  (a) Inventory records - when and where was an inventory taken
 #          watershedName Year Location Inventory.Survey.ID
+#      Here is where inventories with zero catches are added
 # 
 #  (b) Catch Summary - how many fish by species were captured. 
-#      We expand (a) to include catch including 0 catch for all species seen during any inventory
+#      We expand (a) to include catch including 0 catch for all species 
+#      seen during any inventory
 #          WatershedName Year Location Inventory.Survey.Id  Distance Time Species.Code Catch
 # 
 #  Cc) Fish length records - records for fish actually captured and measured this is basically the FWIS data readin
 #          WatershedName Year Location Inventory.Survey.ID  Species.Code Fork.Length..m. 
 
 #---------------------------------------
-# Get the inventory records 
-inventory <- plyr::ddply(fish, c("Inventory.Survey.ID"), function(x){
-    # just pull out the first record and drop all of the fish information
-    inventory <- x[1,, drop=FALSE]
-    drop.columns <- c("Angler.Count","Pass.Number","Captured.Count","Total.Count.of.Species.by.SurveyID",
-                      "Species.Code","Species.Common.Name","Weight..g.","Fork.Length..mm.",
-                      "Total.Length..mm.","Gender","Age")
-    inventory <- inventory[, !names(inventory) %in% drop.columns]
-    as.data.frame(inventory)
-})
 
+
+inventory <- extract.inventory(fish, zero.catch)
+   
 xtabs(~Survey.Type + Year,     data=inventory , exclude=NULL, na.action=na.pass)
 # Remove all non-electrofishing survey types
 dim(inventory)
@@ -171,39 +168,29 @@ xtabs(~LocationTTM+Distance..m., data=inventory, exclude=NULL, na.action=na.pass
 xtabs(~Time..s.,     data=inventory, exclude=NULL, na.action=na.pass)# remove data where no distance or time
 
 
-#---------------------------------------------------------------------------------------
-#  Create the catch summary
-# We first extract for each Inventory.Survey.ID, one record per species
-catch.summary <- plyr::ddply(fish, c("Species.Code","Inventory.Survey.ID"), plyr::summarize,
-                            Count        = mean(Total.Count.of.Species.by.SurveyID))
-# Any inventory with 0 counts for all species will have Species.Code = NA
-catch.summary[ is.na(catch.summary$Species.Code),]
-dim(catch.summary)
-catch.summary <- catch.summary[ !is.na(catch.summary$Species.Code),]
-dim(catch.summary)
 
-# Now we need to expand for each Inventory.Survey.ID the full set of species 
-# and impute 0 values for species not seen for this inventory (i.e 0 catch of this species)
-which.species <- unique(catch.summary$Species.Code)
-all.catch <- plyr::ddply(inventory, "Inventory.Survey.ID", function(x, species.list){
-     all.species <- expand.grid(Inventory.Survey.ID=x$Inventory.Survey.ID[1],
-                                Species.Code       =species.list,
-                                stringsAsFactors=FALSE)
-     all.species
-}, species.list=which.species)
-catch.summary <- merge(catch.summary, all.catch, all=TRUE)
-catch.summary$Count[ is.na(catch.summary$Count)] <- 0
-catch.summary <- merge(catch.summary, inventory, all.x=TRUE)   # merge it back with inventory records get inventory infor
-
-catch.summary <- plyr::ddply(catch.summary, c("WatershedName","Species.Code","Year","LocationTTM"), plyr::summarize,
-                             Distance..m. = sum(Distance..m., na.rm=TRUE),
-                             Count        = sum(Count,        na.rm=TRUE),
-                             CPUE.300m    = Count / Distance..m. * 300)
+catch.summary <- extract.catch.summary(fish, zero.catch, inventory)
 
 xtabs(~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
 xtabs(Count~Species.Code+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
 xtabs(~LocationTTM+Year, data=catch.summary, exclude=NULL, na.action=na.pass)
 xtabs(~LocationTTM+Species.Code+Year, data=catch.summary[catch.summary$Year==2015,], exclude=NULL, na.action=na.pass)
+
+#---------------------------------------------------------------------------------------
+
+fish <- extract.fish(fish)
+dim(fish)
+# what species are present in this workbook
+xtabs(~Species.Code, data=fish, exclude=NULL, na.action=na.pass)
+
+# Check the fork length field
+plyr::ddply(fish, c("Species.Code"), plyr::summarize, 
+            nfish=length(Fork.Length..mm.),
+            nmiss=sum(is.na(Fork.Length..mm.)),
+            fl.min=min(Fork.Length..mm., na.rm=TRUE),
+            fl.max=max(Fork.Length..mm., na.rm=TRUE))
+# which records are missing Fork Length
+fish[ is.na(fish$Fork.Length..mm.),]
 
 ```
 
@@ -319,12 +306,12 @@ sd.nostrat <- sd(catch.summary$logCPUE)
 
 
 pandoc.table(huc.stat,
-             caption="Stratum statistics for HUC stratification",
+             caption="Stratum statistics on log(CPUE) for HUC stratification",
              round=c(0,1,1),
              justify='lrr')
 
 pandoc.table(strorder.stat,
-             caption="Stratum statistics for STREAM ORDER stratification",
+             caption="Stratum statistics on log(CPUE) for STREAM ORDER stratification",
              round=c(0,1,1),
              justify='lrr')
 
@@ -401,7 +388,7 @@ variables and the three potential qllocation strategies as summarized below:
 ```{r final.table, ehco=FALSE, results="asis", echo=TRUE}
 res <-rbind(huc.SE, strorder.SE)
 pandoc.table( res,
-              caption='Comparing final SE under different stratification and allocations',
+              caption='Comparing final SE for log(median) under different stratification and allocations',
               round=c(0,2,2,2,2),keep.trailing.zeros=TRUE,
               justify='lrrrr')
 

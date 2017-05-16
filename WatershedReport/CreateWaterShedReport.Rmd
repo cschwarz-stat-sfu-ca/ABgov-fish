@@ -3,11 +3,10 @@ title: "Creating a draft Watershed Assessment Report"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
-  html_document:
-    number_sections: yes
   pdf_document:
     number_sections: yes
-    
+  html_document:
+    number_sections: yes
 ---
 
 ```{r setup1, include=FALSE}
@@ -394,8 +393,8 @@ library(R2jags)  # used for call to JAGS
 library(scales)
 library(stringr)
 
-source("functions.R")  # functions to read the FWIS workbook etc
-source("FSI.threshold.R")
+source(file.path("..","CommonFiles","functions.R"))  # functions to read the FWIS workbook etc
+source(file.path("..","CommonFiles","FSI.threshold.R"))
 
 # Set Figure and Table number variables. DO NOT CHANGE these except at your peril
 # Get the figure or table number before the first time you reference it.
