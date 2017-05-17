@@ -652,7 +652,7 @@ Year-Specific Effects (Process Error)
 
 
 # Role of process error (year-specific effects)
-Year-specific effects add extra variaton to the assessment
+Year-specific effects add extra variation to the assessment
 
 ```{r echo=FALSE, fig.height=3, fig.width=5, out.height='4in', dpi=300}
 fsi.plot.data
@@ -935,7 +935,7 @@ typically leads to smaller improvments
 * Read and summarize CPUE information. CAUTION. Current FWIS format does not include HUC10 or stream order
 * Find POPLATION WEIGHTS from GIS for each stratification option
 * Estimate $s_h$ for each stratum
-* Do trial allocaitons, say with $n_{tota}=100$
+* Do trial allocations, say with $n_{total}=100$
 * Estimate uncertainty in mean
 
 Is there a benefit from stratification vs. no stratification?  

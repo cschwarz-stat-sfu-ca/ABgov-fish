@@ -3,15 +3,15 @@ title: "Your Favorite Watershed - Stratification Choices"
 author: "Carl Schwarz"
 date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output:
+  word_document:
+    fig_caption: yes
+    reference_docx: WatershedTemplate-STYLE.docx
+    toc: yes
   pdf_document:
     number_sections: yes
     toc: yes
   html_document:
     number_sections: yes
-    toc: yes
-  word_document:
-    fig_caption: yes
-    reference_docx: WatershedTemplate-STYLE.docx
     toc: yes
 ---
 
@@ -86,8 +86,7 @@ csvfilename  = file.path("Data","Quirk Creek.csv")
 
 survey.type.wanted <- tolower(c('Electrofishing'))  # make sure spelling is correct!
 
-# CHoose one of the following code fragments, depending if JAVA is working or not.
-#  If xlxs package is working
+# CHoose one of the following code fragments depending if you can read the xls file directly
 # Check that  FWIS files exists
 if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
@@ -283,12 +282,12 @@ avoid taking log(0):
 catch.summary <- readxl::read_excel(file.path("Data","Nordegg2016SiteCUESummary_streamorder_CS.xlsx"),
                                     sheet="Sheet1", skip=1)
 names(catch.summary) <- make.names(names(catch.summary))
-range(catch.summary$BKTR_100m..recomputed.)
+range(catch.summary$BLTR_100m)
 
-offset <- 0.5 * min(catch.summary$BKTR_100m..recomputed.[catch.summary$BKTR_100m..recomputed.>0])
+offset <- 0.5 * min(catch.summary$BLTR_100m[catch.summary$BLTR_100m>0])
 offset
 
-catch.summary$logCPUE <- log(catch.summary$BKTR_100m..recomputed. + offset)
+catch.summary$logCPUE <- log(catch.summary$BLTR_100m + offset)
 ```
 Stratification by HUC10 code and Stream Order will be considered. The stratum statistics are:
 ```{r stratum.stat, echo=FALSE, results='asis'}
@@ -296,24 +295,32 @@ Stratification by HUC10 code and Stream Order will be considered. The stratum st
 # the code to extract the HUC10 and/or stream order from the actual data.
 
 huc.stat <- plyr::ddply(catch.summary, "HUC10", plyr::summarize,
+                          n   =length(logCPUE),
                           mean=mean(logCPUE),
                           sd  =sd  (logCPUE))
 strorder.stat <- plyr::ddply(catch.summary, "STR_ORDER", plyr::summarize,
+                          n   =length(logCPUE),
                           mean=mean(logCPUE),
                           sd  =sd  (logCPUE))
 
 sd.nostrat <- sd(catch.summary$logCPUE)
 
 
-pandoc.table(huc.stat,
+pandoc.table(huc.stat[, c("HUC10","mean","sd")],
              caption="Stratum statistics on log(CPUE) for HUC stratification",
              round=c(0,1,1),
              justify='lrr')
 
-pandoc.table(strorder.stat,
+pandoc.table(strorder.stat[, c("STR_ORDER","mean","sd")],
              caption="Stratum statistics on log(CPUE) for STREAM ORDER stratification",
              round=c(0,1,1),
              justify='lrr')
+
+```
+
+```{r zerosd, echo=FALSE, eval=any(c(strorder.stat$sd, huc.stat$sd)), results="asis"}
+cat("Notice that some of the strata in the above tables has a standard deviation close to zero.\n")
+cat("This will have implications when the optimal allocation is used as will be seen below.\n")
 
 ```
 
@@ -343,7 +350,12 @@ strorder.stat <- merge(strorder.pop.weights, strorder.stat)
 
 # Comparing precision under no stratification and potential stratifications.
 Using an arbitary total sample size of 100 for convenience, we
-allocate this total sample size among the strata using the equal, proportional, or optimal allocation:
+allocate this total sample size among the strata using the equal, proportional, or optimal allocation.
+If a stratum has a standard deviation of 0, strict application of optimal allocation would imply
+that 0 (the product of $S_h W_h$) would be allocated to this stratum. This certainly would NOT
+be a wise plan. The usual rule of thumb is that each stratum must have at least 2 sampling units to enable
+an estiamate of the within stratum standard deviation. 
+
 ```{r allocate, echo=FALSE,results="asis"}
 totaln <- 100
 # Allocate sample size for HUC
@@ -355,12 +367,31 @@ strorder.stat$n.equal <- totaln/nrow(strorder.stat)
 strorder.stat$n.prop  <- totaln*strorder.stat$W
 strorder.stat$n.opt   <- totaln*strorder.stat$W*strorder.stat$sd / sum(strorder.stat$W*strorder.stat$sd)
 
-pandoc.table(huc.stat,
+# fix any allocations with sample sizes < 2
+fix.allocation <- function(n){
+    totaln <- sum(n)
+    select <- n < 2  # which strata have sample sizes < 2
+    n[select] <- 2
+    n[!select] <- (totaln - sum(n[select]))* n[!select]/sum(n[!select])
+    n
+}
+
+huc.stat$n.equal <- fix.allocation(huc.stat$n.equal)
+huc.stat$n.prop  <- fix.allocation(huc.stat$n.prop )
+huc.stat$n.opt   <- fix.allocation(huc.stat$n.opt  )
+
+strorder.stat$n.equal <- fix.allocation(strorder.stat$n.equal)
+strorder.stat$n.prop  <- fix.allocation(strorder.stat$n.prop )
+strorder.stat$n.opt   <- fix.allocation(strorder.stat$n.opt  )
+
+
+
+pandoc.table(huc.stat[,c("HUC10","W","mean","sd","n.equal","n.prop","n.opt")],
              caption="Allocations for HUC stratification",
              round=c(0,2,1,1,1,1,1),
              justify='lrrrrrr')
 
-pandoc.table(strorder.stat,
+pandoc.table(strorder.stat[,c("STR_ORDER","W","mean","sd","n.equal","n.prop","n.opt")],
              caption="Allocations for STREAM ORDER stratification",
              round=c(0,2,1,1,1,1,1),
              justify='lrrrrrr')
@@ -385,7 +416,7 @@ strorder.SE <- data.frame(Strat.method="Stream Order",
 ```
 Now we can compare the forecasted standard errors under the two potential stratication
 variables and the three potential qllocation strategies as summarized below:
-```{r final.table, ehco=FALSE, results="asis", echo=TRUE}
+```{r final.table, echo=FALSE, results="asis"}
 res <-rbind(huc.SE, strorder.SE)
 pandoc.table( res,
               caption='Comparing final SE for log(median) under different stratification and allocations',

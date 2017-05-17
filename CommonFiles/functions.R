@@ -1838,7 +1838,8 @@ estimate.power <- function(vc, alpha=0.05){
    plotdata$Years2 <- paste("Over ", plotdata$Year," Years",sep="")
    plotdata$PerChangeF <- factor(plotdata$PerChange)
    power.plot <- ggplot2::ggplot(data=plotdata, aes(x=sites.per.year, y=power.1sided.a, color=PerChangeF))+
-      ggtitle(paste("Power to detect changes over time for \n", vc$Watershed, " ",vc$Type,"  ", vc$Measure,"\n alpha=",power$alpha[1],
+      ggtitle(paste("Power to detect changes over time for \n", 
+                    vc$Watershed, " ",vc$Type,"  ", vc$Measure,"\n alpha=",power$alpha[1],
                     "; rProcess SD= ", format(round(power$Process.SD[1] ,2),nsmall=2), 
                     "; rSampling SD= ",format(round(power$Sampling.SD[1],2),nsmall=2), sep=""))+
       geom_line(aes(group=PerChangeF, linetype=PerChangeF))+
@@ -1846,7 +1847,7 @@ estimate.power <- function(vc, alpha=0.05){
       facet_wrap(~Years2, ncol=1, scales='fixed')+
       scale_color_discrete(name="Percent\nChange")+
       scale_linetype_discrete(name="Percent\nChange")
-   plot(power.plot)
+   #plot(power.plot)
    ggsave(plot=power.plot, file=paste('power-',vc$Watershed,"-",vc$Type,"-",vc$Measure,"-rProcessSD-",
                                       format(round(power$Process.SD[1],2),nsmall=2),".png",sep=""),
            h=6, w=6, dpi=300)

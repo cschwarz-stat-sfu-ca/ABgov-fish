@@ -89,8 +89,7 @@ csvfilename  = file.path("Data","Quirk Creek.csv")
 
 survey.type.wanted <- tolower(c('Electrofishing'))  # make sure spelling is correct!
 
-# CHoose one of the following code fragments, depending if JAVA is working or not.
-#  If xlxs package is working
+# CHoose one of the following code fragments, depending if you have problems opening Excel files
 # Check that  FWIS files exists
 if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 

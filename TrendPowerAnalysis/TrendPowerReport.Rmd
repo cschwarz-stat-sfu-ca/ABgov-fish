@@ -48,16 +48,16 @@ target.species <- 'ALL'
 # template
 
 # Enter the workbook name and worksheet name containing the FWIS output
-# If JAVA isn't working, enter the name of the csv file.
 
-workbookName = 'Data/Quirk Creek.xls'
+
+workbookName = file.path('Data','Quirk Creek.xls')
 sheetName    = 'F&W'
 csvfilename  = file.path("Data","Quirk Creek.csv")
 
-# CHoose one of the following code fragments, depending if JAVA is working or not.
-#  If xlxs package is working
+# CHoose one of the following code fragments, depending if you have trouble opening the Excel workbook
+
 # Check that  FWIS files exists
-#if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
+if(!file.exists(workbookName))stop(paste("File ",workbookName,' not found '))
 
 # read the sheet from the workbook
 fish <- read.FWIS.workbook(
