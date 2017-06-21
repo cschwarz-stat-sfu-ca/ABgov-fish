@@ -262,16 +262,6 @@ if(any(is.na(vc$SD.sampling) | is.na(vc$SD.process))){
 vc <- vc[ !(is.na(vc$SD.sampling) | is.na(vc$SD.process)),]
 ```
 
-```{r computepower, echo=FALSE}
-# now for power charts to detect 10%, 30%, 50%, 100%, 200%, 300% change over 5 years 
-# by varying the number of sites at different levels of process error
-
-power.res <- ddply(vc, c("WatershedName","Species.Code","Type","Measure"), estimate.power)
-
-# The actual power values are available if you want to do furter analyses
-# or plots but we will produce some standard plots
-#head(power.res)
-```
 # Power analysis
 ```{r power.fignum, echo=FALSE}
 power.fignum <- getFIGNUM()
@@ -281,8 +271,13 @@ A power analysis was conducted to detect a 10%, 30%, 50%, 100%, 200%, 300% chang
 by varying the number of sites given the sampling and process error estimated above. Results
 are summarized in Figure `r power.fignum` (one plot per species).
 ```{r compute.power, echo=FALSE}
+# now for power charts to detect 10%, 30%, 50%, 100%, 200%, 300% change over 5 years 
+# by varying the number of sites at different levels of process error
+
 power.res <- ddply(vc, c("WatershedName","Species.Code","Type","Measure"), estimate.power)
 
+# The actual power values are available if you want to do furter analyses
+# or plots but we will produce some standard plots
 # You can make a table or stick with the standard plot below.
 
 # make a plot for each species
@@ -300,8 +295,15 @@ plots.list <- plyr::dlply(power.res, "Species.Code", function(power){
       ylab("Power")+ylim(0,1)+geom_hline(yintercept=0.80)+
       facet_wrap(~Years2, ncol=1, scales='fixed')+
       scale_color_discrete(name="Percent\nChange")+
-      scale_linetype_discrete(name="Percent\nChange")
+      scale_linetype_discrete(name="Percent\nChange")+
       xlab("Sites per year")
+  ggsave(plot=power.plot, file=paste('power-',power$WatershedName[1],"-",
+                                      power$Species.Code[1],"-",
+                                      power$Type[1],"-",
+                                      power$Measure[1],
+                                      "-rProcessSD-",format(round(power$Process.SD[1],2),nsmall=2),
+                                     ".png",sep=""),
+           h=6, w=6, dpi=300)
   power.plot
 })
 ```

@@ -663,6 +663,8 @@ Because of the way the data are structured, there are no records for a inventory
 Consequently, we need to impute a catch of 0 for species not seen during a particular inventory to make
 a complete set of CPUE for each Location in each Year of the study.
 
+A location is defined as the same Longitude/Latitude co-ordinates within a circle with a 60 m radius.
+
 
 ### For which species do you want a power analysis?.
 You may wish the power analysis only for a subset of the species. 
