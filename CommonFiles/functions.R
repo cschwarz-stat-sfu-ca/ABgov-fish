@@ -149,14 +149,27 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
    fish$Longitude    <- as.numeric(fish$Longitude)
    fish$Latitude     <- as.numeric(fish$Latitude)
  
-   # create LocationTTM based on Easting/Northing values
-   # at the moment, no checking for locations that are "close"
+   # Group together points that are within +/- 30 m of each other
+   # Taken from https://gis.stackexchange.com/questions/17638/how-to-cluster-spatial-data-in-r
    
-   fish$LocationTTM <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   # create LocationTTM based on Easting/Northing values
+   fish$LocationTTMold <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   
+   # cluster the points to avoid rounding errors
+   cluster <- cluster_point(fish)
+   
+   # merge the cluster id back with the fish data on the Long/Lat co-ordinates
+   fish <- merge(fish, cluster, all=TRUE)
+   
+   # create the LocationTTM variable based on Long/Lat of the clustered data
+   fish$LocationTTM <- paste("LO.",fish$Longitude.center,"-","LA.",fish$Latitude.center, sep="")
+   
    
    # create Watershed Name using proper case
    if(!'Waterbody.Official.Name' %in% names(fish))stop("Missing Waterbody Official Name")
-   fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   # See email dated 2017-06-06 from Andrew Paul
+   #fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   fish$WatershedName <- stringr::str_to_title(fish$HUC)
    
    # convert forklength and weight to numeric
    fish$"Fork.Length..mm." <- as.numeric(fish$"Fork.Length..mm.")
@@ -319,14 +332,24 @@ valid.species.codes <- read.csv(valid.species.codes.csv, header=TRUE, as.is=TRUE
    fish$Longitude    <- as.numeric(fish$Longitude)
    fish$Latitude     <- as.numeric(fish$Latitude)
  
-   # create LocationTTM based on Easting/Northing values
-   # at the moment, no checking for locations that are "close"
+   # create LocationTTM based on Lat/Long with some buffer around the points
+   fish$LocationTTMold <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
    
-   fish$LocationTTM <- paste( "E.",fish$TTM.Easting,"-","N.",fish$TTM.Northing, sep="")
+   # cluster the points to avoid rounding errors
+   cluster <- cluster_point(fish)
    
+   # merge the cluster id back with the fish data on the Long/Lat co-ordinates
+   fish <- merge(fish, cluster, all=TRUE)
+   
+   # create the LocationTTM variable based on Long/Lat of the clustered data
+   fish$LocationTTM <- paste("LO.",fish$Longitude.center,"-","LA.",fish$Latitude.center, sep="")
+
+      
    # create Watershed Name using proper case
    if(!'Waterbody.Official.Name' %in% names(fish))stop("Missing Waterbody Official Name")
-   fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   # See email dated 2017-06-06 from Andrew Paul
+   #fish$WatershedName <- stringr::str_to_title(fish$Waterbody.Official.Name)
+   fish$WatershedName <- stringr::str_to_title(fish$HUC)
    
    # convert forklength and weight to numeric
    fish$"Fork.Length..mm." <- as.numeric(fish$"Fork.Length..mm.")
@@ -371,6 +394,50 @@ read.zero.catch <- function(survey.type.wanted,
    # select which survey type is wanted
    zero.catch <- zero.catch[ zero.catch$Survey.Type == survey.type.wanted, ]
    zero.catch
+}
+
+#--------------------------------------------------------------------
+cluster_point <- function( fish, radius=60){
+  # cluster the location points within a 60 m radius of each other
+  # Taken from https://gis.stackexchange.com/questions/17638/how-to-cluster-spatial-data-in-r
+  
+  # assume that the fish data frame has two variables "Longitude" and "Latitude"
+  # returns a TTM based on controid of clusters
+  require(sp)
+  require(geosphere)
+  require(stats)
+  
+  unique.Lat.Long <- unique(fish[,c("Longitude","Latitude")])
+  xy <- sp::SpatialPointsDataFrame(
+    as.matrix(unique.Lat.Long), data.frame(ID=seq(1:nrow(unique.Lat.Long))),
+    proj4string=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
+  
+  # use the distm function to generate a geodesic distance matrix in meters
+  mdist <- geosphere::distm(xy)
+  
+  # cluster all points using a hierarchical clustering approach
+  hc <- stats::hclust(as.dist(mdist), method="complete")
+  
+  # define clusters based on a tree "height" cutoff "d" and add them to the SpDataFrame
+  xy$clust <- stats::cutree(hc, h=radius)
+  
+  # extract the matrix of co-ordinates and cluster number
+  coord <- as.data.frame(coordinates(xy))
+  coord$clust <- xy@data$clust
+  
+  # get the centroid for each cluster
+  cent <- matrix(ncol=2, nrow=max(xy$clust))
+  for (i in 1:max(xy$clust))
+    # gCentroid from the rgeos package
+    cent[i,] <- rgeos::gCentroid(subset(xy, clust == i))@coords
+  
+  # add the centroid to the coord data frame
+  coord$Longitude.center <- cent[ coord$clust, 1]
+  coord$Latitude.center  <- cent[ coord$clust, 2]
+  
+  # return the data frame of centroids
+  coord
+  
 }
 
 #--------------------------------------------------------------------
@@ -462,7 +529,7 @@ extract.fish <- function(fish){
    fish <- fish[, !names(fish) %in% drop.columns]
    
    #   Drop fish data with no species code
-   fish <- fish[ !is.na(fish$Species.Code), drop=FALSE]
+   fish <- fish[ !is.na(fish$Species.Code),, drop=FALSE]
 
    fish
 }

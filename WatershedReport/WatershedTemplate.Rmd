@@ -38,10 +38,11 @@ output:
 # Here we open the libraries needed and source any other code as needed
 knitr::opts_chunk$set(echo = TRUE)
 
-Version <- '2071-05-17'
+Version <- '2017-06-21'
 
 library(car)
 library(coda)
+library(geosphere)
 library(ggmap)
 library(ggplot2)
 library(gridExtra)
@@ -53,6 +54,7 @@ library(readxl)
 library(reshape2)
 library(R2jags)  # used for call to JAGS
 library(scales)
+library(sp)
 library(stringr)
 
 source(file.path("..","CommonFiles","functions.R"))  # functions to read the FWIS workbook etc
@@ -282,13 +284,16 @@ google.map <- get_map(boundaries, maptype="satellite",  source="google", zoom=11
 my.map <- ggmap(google.map)
 
 # Exract the sampling points
-stations <- unique( inventory[,c("TTM.Easting","TTM.Northing","Longitude","Latitude")])
+stations <- unique( inventory[,c("TTM.Easting","TTM.Northing","Longitude","Latitude",
+                                 "clust","Longitude.center","Latitude.center")])
+
 plot1 <- my.map +
          ggtitle(paste('Figure ', fig.map,". Location of sampling sites on ", inventory$WatershedName[1],sep=""))+
          theme(plot.title = element_text(size = 8))+  # change text size for title
          geom_point(data=stations, aes(x=Longitude, y=Latitude),size=2, color='red', 
                     position=position_jitter(h=.0015, w=.0015) )+
-          xlab("Latitude")+ylab("Longitude")
+         geom_point(data=stations, aes(x=Longitude.center, y=Latitude.center), size=3, color="blue", shape="X")+
+         xlab("Latitude")+ylab("Longitude")
 plot1
 
 ```
@@ -392,7 +397,7 @@ In the following sections, a more detailed investigation of the status of each o
 #  Don't forget to remove any commas after the final species selected
 child.list <- c(
 #        'SpeciesSubsection-ARGR.Rmd',
-#        'SpeciesSubsection-BKTR.Rmd',
+         'SpeciesSubsection-BKTR.Rmd'
 #        'SpeciesSubsection-BLTR.Rmd',
 #        'SpeciesSubsection-BLBK.Rmd',
 #        'SpeciesSubsection-BURB.Rmd',
