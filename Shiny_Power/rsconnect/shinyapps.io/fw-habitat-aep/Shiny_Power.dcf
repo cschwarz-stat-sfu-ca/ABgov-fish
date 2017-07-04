@@ -1,0 +1,10 @@
+name: Shiny_Power
+title: Shiny_Power
+account: fw-habitat-aep
+server: shinyapps.io
+appId: 187068
+bundleId: 857162
+url: https://fw-habitat-aep.shinyapps.io/Shiny_Power/
+when: 1496859257.55915
+asMultiple: FALSE
+asStatic: FALSE

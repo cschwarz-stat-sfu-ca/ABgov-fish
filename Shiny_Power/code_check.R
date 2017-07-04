@@ -1,0 +1,9 @@
+PerChange<-300
+y<-5
+Trend<-(PerChange/100+1)^(1/(y-1))-1
+lambda<-(PerChange/100+1)^(1/(y-1))
+x<-1:y
+mu<-Trend*(x-1)
+lf<-log(lambda)*(x-1)
+plot(x,exp(mu),type="l",ylim=c(1,5))
+lines(x,exp(lf),col="red")
